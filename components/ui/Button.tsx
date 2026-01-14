@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   text: {
-    color: colors.background,
+    color: colors.white,
     fontWeight: '600',
   },
   outlineText: {

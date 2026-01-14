@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { colors, fontSize, spacing } from '@/constants/theme';
 
@@ -33,36 +32,45 @@ export default function IntroScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>now I AM</Text>
-        <Text style={styles.subtitle}>로딩중...</Text>
-      </View>
+      <ImageBackground
+        source={require('@/assets/images/intro1.jpg')}
+        style={styles.container}
+        resizeMode="cover"
+      >
+        <View style={styles.content}>
+          <View style={styles.titleBox}>
+            <Text style={styles.title}>now I AM</Text>
+          </View>
+          <Text style={styles.loadingText}>로딩중...</Text>
+        </View>
+      </ImageBackground>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require('@/assets/images/intro1.jpg')}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <View style={styles.content}>
-        <Text style={styles.title}>now I AM</Text>
-        <Text style={styles.subtitle}>어제의 오늘은</Text>
+        <View style={styles.titleBox}>
+          <Text style={styles.title}>now I AM</Text>
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button
-          title="시작하기"
-          onPress={handleStart}
-          size="lg"
-          fullWidth
-        />
+        <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+          <Text style={styles.startButtonText}>시작하기</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
@@ -71,19 +79,42 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 50,
+  },
+  titleBox: {
+    borderWidth: 1,
+    borderColor: colors.white,
+    paddingVertical: spacing.xl * 1.5,
+    paddingHorizontal: spacing.xl * 2,
+    backgroundColor: 'transparent',
   },
   title: {
-    fontSize: fontSize.xxxl,
+    fontSize: 40,
     fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: spacing.md,
+    color: colors.white,
+    letterSpacing: 4,
+    textAlign: 'center',
   },
-  subtitle: {
+  loadingText: {
     fontSize: fontSize.lg,
-    color: colors.textSecondary,
+    color: colors.white,
+    marginTop: spacing.xl,
   },
   buttonContainer: {
     width: '100%',
     paddingBottom: spacing.xl,
+    marginTop: 128,
+  },
+  startButton: {
+    backgroundColor: colors.overlay,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  startButtonText: {
+    fontSize: fontSize.xl,
+    fontWeight: '600',
+    color: colors.accent,
   },
 });
