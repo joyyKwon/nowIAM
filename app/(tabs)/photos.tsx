@@ -37,23 +37,26 @@ export default function PhotosScreen() {
     router.push('/post/create');
   };
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity
-      style={styles.imageContainer}
-      onPress={() => router.push(`/post/${item.id}`)}
-    >
-      {item.mediaType === 'video' ? (
-        <View style={styles.videoOverlay}>
-          <Ionicons name="play-circle" size={32} color="white" />
-        </View>
-      ) : null}
-      <Image
-        source={{ uri: item.imageUrl }}
-        style={styles.image}
-        resizeMode="cover"
-      />
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: any) => {
+    console.log('Rendering item:', item.id, item.imageUrl);
+    return (
+      <TouchableOpacity
+        style={styles.imageContainer}
+        onPress={() => router.push(`/post/${item.id}`)}
+      >
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        {item.mediaType === 'video' && (
+          <View style={styles.videoOverlay}>
+            <Ionicons name="play-circle" size={32} color="white" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>

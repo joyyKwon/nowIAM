@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
-import { uploadFile, uriToBlob, generateFileName } from '@/lib/storage';
+import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
@@ -157,9 +157,9 @@ export default function EditPostScreen() {
       if (imageChanged) {
         const extension = imageUri.split('.').pop() || 'jpg';
         const fileName = generateFileName(profile.id, extension);
-        const blob = await uriToBlob(imageUri);
+        const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-        const { url, error } = await uploadFile('posts', fileName, blob);
+        const { url, error } = await uploadFile('posts', fileName, imageUri, contentType);
 
         if (error || !url) {
           throw new Error('파일 업로드 실패');

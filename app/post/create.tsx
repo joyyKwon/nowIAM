@@ -14,11 +14,18 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
-import { uploadFile, uriToBlob, generateFileName } from '@/lib/storage';
+import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
 
 export default function CreatePostScreen() {
   const router = useRouter();
@@ -32,6 +39,8 @@ export default function CreatePostScreen() {
   const [newKeyword, setNewKeyword] = useState('');
   const [feeling, setFeeling] = useState(5);
   const [location, setLocation] = useState('');
+  const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -113,9 +122,9 @@ export default function CreatePostScreen() {
       // 1. 이미지/동영상 업로드
       const extension = imageUri.split('.').pop() || 'jpg';
       const fileName = generateFileName(profile.id, extension);
-      const blob = await uriToBlob(imageUri);
+      const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-      const { url, error } = await uploadFile('posts', fileName, blob);
+      const { url, error } = await uploadFile('posts', fileName, imageUri, contentType);
 
       if (error || !url) {
         throw new Error('파일 업로드 실패');
@@ -239,13 +248,49 @@ export default function CreatePostScreen() {
         {/* 위치 */}
         <View style={styles.section}>
           <Text style={styles.label}>위치</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="위치를 입력하세요"
-            value={location}
-            onChangeText={setLocation}
-          />
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={() => setShowLocationPicker(true)}
+          >
+            <Ionicons
+              name={location ? 'location' : 'location-outline'}
+              size={20}
+              color={location ? colors.primary : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.locationButtonText,
+                location && styles.locationButtonTextSelected,
+              ]}
+              numberOfLines={1}
+            >
+              {location || '지도에서 위치 선택'}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          {location && (
+            <TouchableOpacity
+              style={styles.clearLocationButton}
+              onPress={() => {
+                setLocation('');
+                setLocationData(null);
+              }}
+            >
+              <Text style={styles.clearLocationText}>위치 삭제</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* 위치 선택 모달 */}
+        <LocationPicker
+          visible={showLocationPicker}
+          onClose={() => setShowLocationPicker(false)}
+          onSelectLocation={(data) => {
+            setLocationData(data);
+            setLocation(data.address);
+          }}
+          initialLocation={locationData || undefined}
+        />
 
         {/* 공개 여부 */}
         <View style={styles.section}>
@@ -402,5 +447,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  locationButtonText: {
+    flex: 1,
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  locationButtonTextSelected: {
+    color: colors.text,
+  },
+  clearLocationButton: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-end',
+  },
+  clearLocationText: {
+    fontSize: fontSize.sm,
+    color: colors.error,
   },
 });

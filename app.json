@@ -16,6 +16,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nowiam.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyAZRjF_OXnQH0S8VC8vlMApgDVksv5VzbA"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "사진과 영상을 촬영하기 위해 카메라 접근이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "사진을 선택하기 위해 사진첩 접근이 필요합니다.",
@@ -29,6 +32,11 @@
       },
       "package": "com.nowiam.app",
       "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBle5IPrwfkspz87aTBoaACEPXT2v6iDnA"
+        }
+      },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

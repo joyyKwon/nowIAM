@@ -9,12 +9,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePostStore } from '@/stores/postStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatDate, getFeelingEmoji } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { format } from 'date-fns';
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -64,9 +65,23 @@ export default function PostDetailScreen() {
     );
   };
 
+  const headerTitle = currentPost
+    ? format(new Date(currentPost.createdAt), 'yyyy-MM-dd')
+    : '';
+
+  const headerOptions = {
+    title: headerTitle,
+    headerLeft: () => (
+      <TouchableOpacity onPress={() => router.back()} style={{ padding: spacing.sm }}>
+        <Ionicons name="chevron-back" size={24} color={colors.text} />
+      </TouchableOpacity>
+    ),
+  };
+
   if (!currentPost) {
     return (
       <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: '', headerLeft: headerOptions.headerLeft }} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -74,6 +89,7 @@ export default function PostDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      <Stack.Screen options={headerOptions} />
       {/* 헤더 */}
       <View style={styles.header}>
         <View style={styles.userInfo}>

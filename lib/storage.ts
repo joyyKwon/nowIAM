@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { File } from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 
 /**
  * 파일을 Supabase Storage에 업로드
@@ -6,14 +8,21 @@ import { supabase } from './supabase';
 export async function uploadFile(
   bucket: 'posts' | 'profiles',
   filePath: string,
-  file: Blob | File,
+  uri: string,
   contentType?: string
 ): Promise<{ url: string | null; error: Error | null }> {
   try {
+    // 파일을 base64로 읽기
+    const file = new File(uri);
+    const base64 = await file.base64();
+
+    // base64를 ArrayBuffer로 변환
+    const arrayBuffer = decode(base64);
+
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(filePath, file, {
-        contentType,
+      .upload(filePath, arrayBuffer, {
+        contentType: contentType || 'image/jpeg',
         upsert: true,
       });
 
@@ -46,15 +55,6 @@ export async function deleteFile(
     console.error('File delete error:', error);
     return { error: error as Error };
   }
-}
-
-/**
- * 로컬 파일 URI에서 Blob 생성 (React Native용)
- */
-export async function uriToBlob(uri: string): Promise<Blob> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  return blob;
 }
 
 /**

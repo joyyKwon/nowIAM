@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
-import { uploadFile, uriToBlob, generateFileName } from '@/lib/storage';
+import { uploadFile, generateFileName } from '@/lib/storage';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function EditProfileScreen() {
@@ -62,9 +62,8 @@ export default function EditProfileScreen() {
       if (profileImage && profileImage.startsWith('file://')) {
         const extension = profileImage.split('.').pop() || 'jpg';
         const fileName = generateFileName('profile', extension);
-        const blob = await uriToBlob(profileImage);
 
-        const { url, error } = await uploadFile('profiles', fileName, blob);
+        const { url, error } = await uploadFile('profiles', fileName, profileImage, 'image/jpeg');
 
         if (error || !url) {
           throw new Error('이미지 업로드 실패');

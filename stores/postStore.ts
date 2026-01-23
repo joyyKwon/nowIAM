@@ -26,12 +26,15 @@ export const usePostStore = create<PostState>((set, get) => ({
   fetchPosts: async (userId: string, sortOrder: 'asc' | 'desc' = 'desc') => {
     try {
       set({ isLoading: true });
+      console.log('Fetching posts for user:', userId);
 
       const { data, error } = await supabase
         .from('posts')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: sortOrder === 'asc' }) as any;
+
+      console.log('Fetch posts result:', { data, error });
 
       if (error) throw error;
 
