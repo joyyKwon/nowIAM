@@ -9,12 +9,15 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+import { CustomHeader } from '@/components/ui/CustomHeader';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
@@ -160,8 +163,30 @@ export default function CreatePostScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <View style={styles.container}>
+      <CustomHeader
+        title="게시물 작성"
+        headerLeft={
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.headerCancelText}>취소</Text>
+          </TouchableOpacity>
+        }
+        headerRight={
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!imageUri || isSubmitting}
+            style={{ opacity: !imageUri || isSubmitting ? 0.5 : 1 }}
+          >
+            <Text style={styles.headerSubmitText}>등록</Text>
+          </TouchableOpacity>
+        }
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView>
+          <View style={styles.content}>
         {/* 이미지/동영상 선택 */}
         <View style={styles.mediaContainer}>
           {imageUri ? (
@@ -313,8 +338,10 @@ export default function CreatePostScreen() {
           loading={isSubmitting}
           disabled={!imageUri || isSubmitting}
         />
-      </View>
-    </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -472,5 +499,14 @@ const styles = StyleSheet.create({
   clearLocationText: {
     fontSize: fontSize.sm,
     color: colors.error,
+  },
+  headerCancelText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  headerSubmitText: {
+    fontSize: fontSize.md,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

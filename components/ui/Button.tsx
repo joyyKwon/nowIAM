@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error,
   },
   sm: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
   },
   md: {

@@ -10,11 +10,14 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
+import { CustomHeader } from '@/components/ui/CustomHeader';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
@@ -169,7 +172,7 @@ export default function EditPostScreen() {
       }
 
       // 게시물 업데이트
-      const updatedPost = await updatePost(id, {
+      await updatePost(id, {
         imageUrl: finalImageUrl,
         mediaType,
         content: content.trim() || undefined,
@@ -178,10 +181,6 @@ export default function EditPostScreen() {
         location: location.trim() || undefined,
         isPublic,
       });
-
-      if (!updatedPost) {
-        throw new Error('게시물 수정 실패');
-      }
 
       Alert.alert('성공', '게시물이 수정되었습니다.', [
         {
@@ -199,17 +198,42 @@ export default function EditPostScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>게시물 불러오는 중...</Text>
+      <View style={styles.container}>
+        <CustomHeader title="게시물 수정" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>게시물 불러오는 중...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {/* 이미지/동영상 선택 */}
+    <View style={styles.container}>
+      <CustomHeader
+        title="게시물 수정"
+        headerLeft={
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.headerCancelText}>취소</Text>
+          </TouchableOpacity>
+        }
+        headerRight={
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!imageUri || isSubmitting}
+            style={{ opacity: !imageUri || isSubmitting ? 0.5 : 1 }}
+          >
+            <Text style={styles.headerSubmitText}>완료</Text>
+          </TouchableOpacity>
+        }
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView>
+          <View style={styles.content}>
+            {/* 이미지/동영상 선택 */}
         <View style={styles.mediaContainer}>
           {imageUri ? (
             <View style={styles.mediaPreview}>
@@ -324,8 +348,10 @@ export default function EditPostScreen() {
           loading={isSubmitting}
           disabled={!imageUri || isSubmitting}
         />
-      </View>
-    </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -469,5 +495,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerCancelText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  headerSubmitText: {
+    fontSize: fontSize.md,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
