@@ -211,13 +211,14 @@ export const usePostStore = create<PostState>((set, get) => ({
     }
   },
 
-  searchPosts: async (userId: string, keyword: string) => {
+  searchPosts: async (userId: string, query: string) => {
     try {
+      // 키워드와 내용에서 검색
       const { data, error } = await supabase
         .from('posts')
         .select('*')
         .eq('user_id', userId)
-        .contains('keywords', [keyword])
+        .or(`content.ilike.%${query}%,keywords.cs.{${query}}`)
         .order('created_at', { ascending: false }) as any;
 
       if (error) throw error;

@@ -1,47 +1,83 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
+import { colors, borderRadius } from '@/constants/theme';
+
+const ICON_SIZE = 28;
 
 export default function TabsLayout() {
+  const router = useRouter();
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          paddingTop: 12,
+        },
         headerShown: true,
         headerStyle: {
           backgroundColor: colors.background,
+          height: 110,
         },
-        headerTintColor: colors.text,
+        headerTitleStyle: {
+          color: colors.primary,
+          fontSize: 22,
+          fontWeight: 'bold',
+          letterSpacing: 1,
+        },
+        headerTitle: 'nowIAM',
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'now IAM',
-          tabBarLabel: '검색',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={ICON_SIZE} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="photos"
+        name="index"
         options={{
-          title: '사진',
-          tabBarLabel: '사진',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="images" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search" size={ICON_SIZE} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="write"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <View
+              style={{
+                width: ICON_SIZE + 6,
+                height: ICON_SIZE + 6,
+                borderWidth: 2,
+                borderColor: color,
+                borderRadius: borderRadius.md,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="add" size={ICON_SIZE - 4} color={color} />
+            </View>
+          ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push('/post/create');
+          },
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: '프로필',
-          tabBarLabel: '프로필',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person" size={ICON_SIZE} color={color} />
           ),
         }}
       />
