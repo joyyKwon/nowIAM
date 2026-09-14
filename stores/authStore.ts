@@ -140,6 +140,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .single() as any;
 
       if (profileError) {
+        console.error('Profile creation error:', profileError);
         set({ isLoading: false });
         return { success: false, error: '프로필 생성에 실패했습니다.' };
       }
