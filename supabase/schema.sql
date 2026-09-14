@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 마이그레이션: 이미 생성된 프로젝트에 이메일/소셜 인증 컬럼 추가
--- (schema.sql을 처음 실행하는 신규 프로젝트에서는 위 CREATE TABLE에서 이미 반영되어 있어 실행할 필요 없음)
+-- 이메일/소셜 인증 컬럼 (신규 프로젝트는 위 CREATE TABLE에서 이미 반영되지만,
+-- 기존 프로젝트에 적용할 때를 위해 별도로도 실행)
 ALTER TABLE profiles ALTER COLUMN device_id DROP NOT NULL;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
@@ -51,31 +51,38 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
 -- 프로필: 자신의 프로필만 읽기/수정 가능
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
 -- 게시물: 자신의 게시물만 읽기/수정/삭제 가능
+DROP POLICY IF EXISTS "Users can view own posts" ON posts;
 CREATE POLICY "Users can view own posts"
   ON posts FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own posts" ON posts;
 CREATE POLICY "Users can insert own posts"
   ON posts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own posts" ON posts;
 CREATE POLICY "Users can update own posts"
   ON posts FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own posts" ON posts;
 CREATE POLICY "Users can delete own posts"
   ON posts FOR DELETE
   USING (auth.uid() = user_id);
@@ -89,11 +96,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_posts_updated_at ON posts;
 CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON posts
   FOR EACH ROW
