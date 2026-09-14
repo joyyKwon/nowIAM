@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Switch,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,7 @@ import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { profile, removePassword } = useAuthStore();
+  const { profile, removePassword, signOut } = useAuthStore();
   const { posts, fetchPosts } = usePostStore();
 
   useEffect(() => {
@@ -35,6 +36,20 @@ export default function ProfileScreen() {
     } else {
       await removePassword();
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '로그아웃',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/(auth)/intro');
+        },
+      },
+    ]);
   };
 
   const defaultProfileImage = 'https://via.placeholder.com/150';
@@ -92,6 +107,11 @@ export default function ProfileScreen() {
             trackColor={{ false: colors.border, true: colors.primary }}
           />
         </View>
+
+        <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
+          <Text style={[styles.settingLabel, styles.logoutLabel]}>로그아웃</Text>
+          <Ionicons name="log-out-outline" size={20} color={colors.error} />
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
@@ -191,6 +211,9 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: fontSize.md,
     color: colors.text,
+  },
+  logoutLabel: {
+    color: colors.error,
   },
   editButton: {
     flexDirection: 'row',
