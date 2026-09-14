@@ -136,6 +136,12 @@ export default function LoginScreen() {
                   />
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                style={styles.forgotPasswordLink}
+                onPress={() => router.push('/(auth)/forgot-password')}
+              >
+                <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
+              </TouchableOpacity>
             </View>
 
             <Button
@@ -280,6 +286,14 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: spacing.md,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginTop: spacing.xs,
+  },
+  forgotPasswordText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
   },
   divider: {
     flexDirection: 'row',

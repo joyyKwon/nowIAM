@@ -178,3 +178,38 @@ export async function resetPassword(email: string) {
     return { error: error as Error };
   }
 }
+
+/**
+ * 비밀번호 재설정 메일의 딥링크 토큰으로 세션 설정
+ */
+export async function setSessionFromRecoveryTokens(accessToken: string, refreshToken: string) {
+  try {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) throw error;
+
+    return { session: data.session, error: null };
+  } catch (error) {
+    console.error('Set recovery session error:', error);
+    return { session: null, error: error as Error };
+  }
+}
+
+/**
+ * 새 비밀번호로 변경 (재설정 세션 상태에서 호출)
+ */
+export async function updatePassword(newPassword: string) {
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error) {
+    console.error('Update password error:', error);
+    return { error: error as Error };
+  }
+}
