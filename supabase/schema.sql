@@ -3,7 +3,9 @@
 -- 프로필 테이블
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  device_id TEXT UNIQUE NOT NULL,
+  device_id TEXT UNIQUE,
+  email TEXT,
+  auth_provider TEXT DEFAULT 'email' CHECK (auth_provider IN ('email', 'google', 'apple', 'kakao', 'naver', 'anonymous')),
   name TEXT,
   birth TEXT,
   sex TEXT,
@@ -14,6 +16,12 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 마이그레이션: 이미 생성된 프로젝트에 이메일/소셜 인증 컬럼 추가
+-- (schema.sql을 처음 실행하는 신규 프로젝트에서는 위 CREATE TABLE에서 이미 반영되어 있어 실행할 필요 없음)
+ALTER TABLE profiles ALTER COLUMN device_id DROP NOT NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
 
 -- 게시물 테이블
 CREATE TABLE IF NOT EXISTS posts (

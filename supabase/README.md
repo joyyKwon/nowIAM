@@ -23,8 +23,12 @@ EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-## 5. 익명 인증 활성화
-1. Supabase 대시보드 > Authentication > Settings
-2. "Enable anonymous sign-ins" 체크
+## 5. 이메일/소셜 인증 설정
+이 앱은 이메일/비밀번호 로그인과 소셜 로그인(Google, Apple, Kakao, Naver)을 사용합니다.
 
-이 앱은 기기별 익명 인증을 사용합니다.
+1. Supabase 대시보드 > Authentication > URL Configuration
+   - Redirect URLs에 `nowiam://auth/callback`, `nowiam://auth/reset-password` 추가
+2. Supabase 대시보드 > Authentication > Providers
+   - Email: 기본 활성화되어 있음 (비밀번호 재설정 메일 발송에 사용)
+   - Google / Apple / Kakao / Naver: 각 제공자 콘솔에서 OAuth 클라이언트를 만들고 여기에 Client ID/Secret 등록
+     - Kakao, Naver는 Supabase 기본 제공자 목록에 없으므로 "Custom OAuth Provider" 또는 별도 연동 방식 확인 필요
