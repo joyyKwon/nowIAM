@@ -2,7 +2,8 @@
 
 export interface Profile {
   id: string;
-  deviceId: string;
+  deviceId?: string;
+  email?: string | null;
   name?: string | null;
   birth?: string | null;
   sex?: string | null;
@@ -10,6 +11,7 @@ export interface Profile {
   profileImage?: string | null;
   password?: string | null;
   passwordEnabled: boolean;
+  authProvider?: 'email' | 'google' | 'apple' | 'kakao' | 'naver' | 'anonymous';
   createdAt: string;
   updatedAt: string;
 }
