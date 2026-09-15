@@ -18,7 +18,9 @@ import { formatDate } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
-const itemSize = (width - spacing.md * 4) / 3;
+const GRID_GAP = 2;
+const GRID_PADDING = spacing.xs;
+const itemSize = (width - GRID_PADDING * 2 - GRID_GAP * 2 * 3) / 3;
 
 type ViewMode = 'grid' | 'list' | 'calendar';
 
@@ -386,14 +388,13 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   grid: {
-    padding: spacing.md,
+    padding: GRID_PADDING,
   },
   imageContainer: {
     width: itemSize,
     height: itemSize,
-    margin: spacing.xs,
+    margin: GRID_GAP,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -413,13 +414,12 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   listContainer: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   listItem: {
     flexDirection: 'row',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
     overflow: 'hidden',
   },
   listImage: {
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flex: 1,
-    padding: spacing.md,
+    padding: spacing.sm,
     justifyContent: 'center',
   },
   listDate: {
@@ -466,10 +466,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   calendarContainer: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   calendarPostsContainer: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   calendarDateTitle: {
     fontSize: fontSize.lg,
@@ -485,15 +485,13 @@ const styles = StyleSheet.create({
   },
   calendarPostItem: {
     flexDirection: 'row',
-    padding: spacing.md,
+    padding: spacing.sm,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   calendarPostImage: {
     width: 60,
     height: 60,
-    borderRadius: borderRadius.sm,
   },
   calendarPostContent: {
     flex: 1,
