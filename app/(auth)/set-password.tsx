@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { PinPad } from '@/components/ui/PinPad';
 import { PinDisplay } from '@/components/ui/PinDisplay';
 import { useAuthStore } from '@/stores/authStore';
@@ -57,7 +59,13 @@ export default function SetPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.content}>
         <Text style={styles.title}>암호 설정</Text>
 
@@ -67,7 +75,7 @@ export default function SetPasswordScreen() {
 
         <PinPad onPress={handlePinPress} />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -75,6 +83,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  backButton: {
+    padding: spacing.xs,
   },
   content: {
     flex: 1,
