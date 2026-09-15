@@ -72,6 +72,10 @@ export default function SearchScreen() {
   const handleSearch = async () => {
     if (!searchQuery.trim() || !profile) return;
 
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
     Keyboard.dismiss();
     setShowSuggestions(false);
     setIsSearching(true);
@@ -228,6 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    height: 44,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
@@ -235,9 +240,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    height: '100%',
     fontSize: fontSize.md,
     color: colors.text,
-    paddingVertical: spacing.sm,
   },
   searchButton: {
     backgroundColor: colors.primary,
