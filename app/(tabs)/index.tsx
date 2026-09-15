@@ -15,6 +15,7 @@ import { Calendar } from 'react-native-calendars';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { formatDate } from '@/lib/utils';
+import { CalendarDay } from '@/components/ui/CalendarDay';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -204,6 +205,7 @@ export default function HomeScreen() {
                   current={selectedDate || getTodayString()}
                   markedDates={getMarkedDates()}
                   markingType="custom"
+                  dayComponent={CalendarDay}
                   onDayPress={handleDayPress}
                   theme={{
                     backgroundColor: colors.background,
@@ -469,11 +471,11 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   calendarPostsContainer: {
-    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   calendarDateTitle: {
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
     color: colors.text,
     marginBottom: spacing.md,
   },
