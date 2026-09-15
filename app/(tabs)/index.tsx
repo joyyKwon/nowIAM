@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,8 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [postsOnDate, setPostsOnDate] = useState<any[]>([]);
   const [hasSelectedBefore, setHasSelectedBefore] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     if (profile) {
@@ -163,6 +166,23 @@ export default function HomeScreen() {
 
   const isToday = selectedDate === getTodayString();
 
+  const openMonthPicker = () => {
+    const base = selectedDate ? new Date(selectedDate) : new Date();
+    setPickerYear(base.getFullYear());
+    setShowMonthPicker(true);
+  };
+
+  const handleSelectMonth = (month: number) => {
+    setShowMonthPicker(false);
+    const dateString = `${pickerYear}-${String(month).padStart(2, '0')}-01`;
+    handleDayPress({ dateString });
+  };
+
+  const getMonthTitle = () => {
+    const base = new Date(selectedDate || getTodayString());
+    return `${base.getFullYear()}년 ${base.getMonth() + 1}월`;
+  };
+
   const renderContent = () => {
     if (posts.length === 0 && !isLoading) {
       return (
@@ -207,6 +227,12 @@ export default function HomeScreen() {
                   markingType="custom"
                   dayComponent={CalendarDay}
                   onDayPress={handleDayPress}
+                  customHeaderTitle={
+                    <TouchableOpacity style={styles.monthTitleButton} onPress={openMonthPicker}>
+                      <Text style={styles.monthTitleText}>{getMonthTitle()}</Text>
+                      <Ionicons name="chevron-down" size={16} color={colors.text} />
+                    </TouchableOpacity>
+                  }
                   theme={{
                     backgroundColor: colors.background,
                     calendarBackground: colors.background,
@@ -267,6 +293,54 @@ export default function HomeScreen() {
                 <Text style={styles.todayButtonText}>오늘</Text>
               </TouchableOpacity>
             )}
+
+            <Modal
+              visible={showMonthPicker}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowMonthPicker(false)}
+            >
+              <TouchableOpacity
+                style={styles.pickerOverlay}
+                activeOpacity={1}
+                onPress={() => setShowMonthPicker(false)}
+              >
+                <TouchableOpacity style={styles.pickerCard} activeOpacity={1}>
+                  <View style={styles.pickerYearRow}>
+                    <TouchableOpacity onPress={() => setPickerYear((y) => y - 1)}>
+                      <Ionicons name="chevron-back" size={22} color={colors.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.pickerYearText}>{pickerYear}년</Text>
+                    <TouchableOpacity onPress={() => setPickerYear((y) => y + 1)}>
+                      <Ionicons name="chevron-forward" size={22} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.pickerMonthGrid}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                      const base = new Date(selectedDate || getTodayString());
+                      const isCurrent = pickerYear === base.getFullYear() && month === base.getMonth() + 1;
+                      return (
+                        <TouchableOpacity
+                          key={month}
+                          style={[styles.pickerMonthCell, isCurrent && styles.pickerMonthCellActive]}
+                          onPress={() => handleSelectMonth(month)}
+                        >
+                          <Text
+                            style={[
+                              styles.pickerMonthText,
+                              isCurrent && styles.pickerMonthTextActive,
+                            ]}
+                          >
+                            {month}월
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
           </View>
         );
     }
@@ -527,6 +601,64 @@ const styles = StyleSheet.create({
   todayButtonText: {
     color: colors.white,
     fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  monthTitleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: 12,
+  },
+  monthTitleText: {
+    fontSize: fontSize.md,
+    fontWeight: '300',
+    color: colors.text,
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerCard: {
+    width: '85%',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+  },
+  pickerYearRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  pickerYearText: {
+    fontSize: fontSize.lg,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  pickerMonthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  pickerMonthCell: {
+    width: '33.33%',
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerMonthCellActive: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+  },
+  pickerMonthText: {
+    fontSize: fontSize.md,
+    color: colors.text,
+  },
+  pickerMonthTextActive: {
+    color: colors.white,
     fontWeight: '600',
   },
 });
