@@ -67,7 +67,7 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     // 유효성 검사
-    if (!email || !password || !confirmPassword || !name) {
+    if (!email || !password || !confirmPassword || !name || !birth) {
       Alert.alert('알림', '필수 항목을 모두 입력해주세요.');
       return;
     }
@@ -87,7 +87,7 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (birth && !isValidBirthDate(birth)) {
+    if (!isValidBirthDate(birth)) {
       Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
@@ -237,14 +237,9 @@ export default function SignUpScreen() {
                 onChangeText={setName}
               />
             </View>
-          </View>
-
-          {/* 선택 항목 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>선택 항목</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>생년월일</Text>
+              <Text style={styles.label}>생년월일 *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD"
@@ -253,6 +248,11 @@ export default function SignUpScreen() {
                 keyboardType="numbers-and-punctuation"
               />
             </View>
+          </View>
+
+          {/* 선택 항목 */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>선택 항목</Text>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>성별</Text>

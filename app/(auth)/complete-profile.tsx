@@ -58,8 +58,8 @@ export default function CompleteProfileScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!name) {
-      Alert.alert('알림', '이름을 입력해주세요.');
+    if (!name || !birth) {
+      Alert.alert('알림', '필수 항목을 모두 입력해주세요.');
       return;
     }
 
@@ -68,7 +68,7 @@ export default function CompleteProfileScreen() {
       return;
     }
 
-    if (birth && !isValidBirthDate(birth)) {
+    if (!isValidBirthDate(birth)) {
       Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
@@ -162,7 +162,7 @@ export default function CompleteProfileScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>생년월일</Text>
+              <Text style={styles.label}>생년월일 *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD"
