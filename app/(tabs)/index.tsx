@@ -16,7 +16,7 @@ import { Calendar } from 'react-native-calendars';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getPostThumbnail } from '@/lib/utils';
 import { CalendarDay } from '@/components/ui/CalendarDay';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
@@ -78,13 +78,18 @@ export default function HomeScreen() {
         onPress={() => router.push(`/post/${item.id}`)}
       >
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: getPostThumbnail(item) }}
           style={styles.image}
           resizeMode="cover"
         />
         {item.mediaType === 'video' && (
           <View style={styles.videoOverlay}>
             <Ionicons name="play-circle" size={32} color="white" />
+          </View>
+        )}
+        {item.mediaType === 'image' && item.imageUrls?.length > 1 && (
+          <View style={styles.multiImageBadge}>
+            <Ionicons name="copy-outline" size={14} color="white" />
           </View>
         )}
       </TouchableOpacity>
@@ -98,7 +103,7 @@ export default function HomeScreen() {
         onPress={() => router.push(`/post/${item.id}`)}
       >
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: getPostThumbnail(item) }}
           style={styles.listImage}
           resizeMode="cover"
         />
@@ -275,7 +280,7 @@ export default function HomeScreen() {
                         onPress={() => router.push(`/post/${post.id}`)}
                       >
                         <Image
-                          source={{ uri: post.imageUrl }}
+                          source={{ uri: getPostThumbnail(post) }}
                           style={styles.calendarPostImage}
                           resizeMode="cover"
                         />
@@ -494,6 +499,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 1,
+  },
+  multiImageBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
     zIndex: 1,
   },
   listContainer: {

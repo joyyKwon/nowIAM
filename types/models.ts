@@ -16,10 +16,13 @@ export interface Profile {
   updatedAt: string;
 }
 
+export const MAX_POST_IMAGES = 10;
+
 export interface Post {
   id: string;
   userId: string;
-  imageUrl: string;
+  imageUrls: string[]; // mediaType = 'image'일 때, 최대 MAX_POST_IMAGES장
+  videoUrl?: string; // mediaType = 'video'일 때
   mediaType: 'image' | 'video';
   content?: string;
   keywords?: string[];
@@ -33,7 +36,8 @@ export interface Post {
 }
 
 export interface CreatePostInput {
-  imageUrl: string;
+  imageUrls?: string[];
+  videoUrl?: string;
   mediaType: 'image' | 'video';
   content?: string;
   keywords?: string[];
@@ -45,7 +49,8 @@ export interface CreatePostInput {
 }
 
 export interface UpdatePostInput {
-  imageUrl?: string;
+  imageUrls?: string[];
+  videoUrl?: string;
   mediaType?: 'image' | 'video';
   content?: string;
   keywords?: string[];

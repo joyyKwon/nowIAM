@@ -2,6 +2,32 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Post, CreatePostInput, UpdatePostInput } from '@/types/models';
 
+const POST_SELECT = '*, post_images(image_url, position)';
+
+function mapPost(row: any): Post {
+  const images = (row.post_images || [])
+    .slice()
+    .sort((a: any, b: any) => a.position - b.position)
+    .map((img: any) => img.image_url);
+
+  return {
+    id: row.id,
+    userId: row.user_id,
+    imageUrls: images,
+    videoUrl: row.video_url ?? undefined,
+    mediaType: row.media_type,
+    content: row.content,
+    keywords: row.keywords,
+    feeling: row.feeling,
+    location: row.location,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 interface PostState {
   posts: Post[];
   isLoading: boolean;
@@ -26,33 +52,16 @@ export const usePostStore = create<PostState>((set, get) => ({
   fetchPosts: async (userId: string, sortOrder: 'asc' | 'desc' = 'desc') => {
     try {
       set({ isLoading: true });
-      console.log('Fetching posts for user:', userId);
 
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(POST_SELECT)
         .eq('user_id', userId)
         .order('created_at', { ascending: sortOrder === 'asc' }) as any;
 
-      console.log('Fetch posts result:', { data, error });
-
       if (error) throw error;
 
-      const posts: Post[] = (data || []).map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        imageUrl: p.image_url,
-        mediaType: p.media_type,
-        content: p.content,
-        keywords: p.keywords,
-        feeling: p.feeling,
-        location: p.location,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        isPublic: p.is_public,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }));
+      const posts: Post[] = (data || []).map(mapPost);
 
       set({ posts, isLoading: false });
     } catch (error) {
@@ -65,30 +74,14 @@ export const usePostStore = create<PostState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(POST_SELECT)
         .eq('id', postId)
         .single() as any;
 
       if (error) throw error;
 
       if (data) {
-        const post: Post = {
-          id: data.id,
-          userId: data.user_id,
-          imageUrl: data.image_url,
-          mediaType: data.media_type,
-          content: data.content,
-          keywords: data.keywords,
-          feeling: data.feeling,
-          location: data.location,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          isPublic: data.is_public,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-
-        set({ currentPost: post });
+        set({ currentPost: mapPost(data) });
       }
     } catch (error) {
       console.error('Fetch post error:', error);
@@ -101,8 +94,8 @@ export const usePostStore = create<PostState>((set, get) => ({
         .from('posts')
         .insert({
           user_id: userId,
-          image_url: input.imageUrl,
           media_type: input.mediaType,
+          video_url: input.mediaType === 'video' ? input.videoUrl : undefined,
           content: input.content,
           keywords: input.keywords,
           feeling: input.feeling,
@@ -115,29 +108,24 @@ export const usePostStore = create<PostState>((set, get) => ({
         .single() as any;
 
       if (error) throw error;
+      if (!data) return null;
 
-      if (data) {
-        const newPost: Post = {
-          id: data.id,
-          userId: data.user_id,
-          imageUrl: data.image_url,
-          mediaType: data.media_type,
-          content: data.content,
-          keywords: data.keywords,
-          feeling: data.feeling,
-          location: data.location,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          isPublic: data.is_public,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
+      if (input.mediaType === 'image' && input.imageUrls?.length) {
+        const rows = input.imageUrls.map((url, index) => ({
+          post_id: data.id,
+          image_url: url,
+          position: index,
+        }));
 
-        set(state => ({ posts: [newPost, ...state.posts] }));
-        return newPost;
+        const { error: imagesError } = await supabase.from('post_images').insert(rows as any);
+        if (imagesError) throw imagesError;
       }
 
-      return null;
+      const newPost = mapPost({ ...data, post_images: [] });
+      newPost.imageUrls = input.mediaType === 'image' ? (input.imageUrls ?? []) : [];
+
+      set(state => ({ posts: [newPost, ...state.posts] }));
+      return newPost;
     } catch (error) {
       console.error('Create post error:', error);
       return null;
@@ -147,7 +135,7 @@ export const usePostStore = create<PostState>((set, get) => ({
   updatePost: async (postId: string, input: UpdatePostInput) => {
     try {
       const dbInput: any = {};
-      if (input.imageUrl !== undefined) dbInput.image_url = input.imageUrl;
+      if (input.videoUrl !== undefined) dbInput.video_url = input.videoUrl;
       if (input.mediaType !== undefined) dbInput.media_type = input.mediaType;
       if (input.content !== undefined) dbInput.content = input.content;
       if (input.keywords !== undefined) dbInput.keywords = input.keywords;
@@ -165,29 +153,36 @@ export const usePostStore = create<PostState>((set, get) => ({
         .single() as any;
 
       if (error) throw error;
+      if (!data) return;
 
-      if (data) {
-        const updatedPost: Post = {
-          id: data.id,
-          userId: data.user_id,
-          imageUrl: data.image_url,
-          mediaType: data.media_type,
-          content: data.content,
-          keywords: data.keywords,
-          feeling: data.feeling,
-          location: data.location,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          isPublic: data.is_public,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
+      if (input.imageUrls !== undefined) {
+        const { error: deleteError } = await supabase
+          .from('post_images')
+          .delete()
+          .eq('post_id', postId);
+        if (deleteError) throw deleteError;
 
-        set(state => ({
-          posts: state.posts.map(p => p.id === postId ? updatedPost : p),
-          currentPost: state.currentPost?.id === postId ? updatedPost : state.currentPost,
-        }));
+        if (input.imageUrls.length) {
+          const rows = input.imageUrls.map((url, index) => ({
+            post_id: postId,
+            image_url: url,
+            position: index,
+          }));
+          const { error: insertError } = await supabase.from('post_images').insert(rows as any);
+          if (insertError) throw insertError;
+        }
       }
+
+      const updatedPost = mapPost({ ...data, post_images: [] });
+      updatedPost.imageUrls =
+        input.imageUrls !== undefined
+          ? input.imageUrls
+          : get().posts.find(p => p.id === postId)?.imageUrls ?? [];
+
+      set(state => ({
+        posts: state.posts.map(p => p.id === postId ? updatedPost : p),
+        currentPost: state.currentPost?.id === postId ? updatedPost : state.currentPost,
+      }));
     } catch (error) {
       console.error('Update post error:', error);
     }
@@ -216,28 +211,14 @@ export const usePostStore = create<PostState>((set, get) => ({
       // 키워드와 내용에서 검색
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(POST_SELECT)
         .eq('user_id', userId)
         .or(`content.ilike.%${query}%,keywords.cs.{${query}}`)
         .order('created_at', { ascending: false }) as any;
 
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        imageUrl: p.image_url,
-        mediaType: p.media_type,
-        content: p.content,
-        keywords: p.keywords,
-        feeling: p.feeling,
-        location: p.location,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        isPublic: p.is_public,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }));
+      return (data || []).map(mapPost);
     } catch (error) {
       console.error('Search posts error:', error);
       return [];
@@ -251,7 +232,7 @@ export const usePostStore = create<PostState>((set, get) => ({
 
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(POST_SELECT)
         .eq('user_id', userId)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString())
@@ -259,21 +240,7 @@ export const usePostStore = create<PostState>((set, get) => ({
 
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        imageUrl: p.image_url,
-        mediaType: p.media_type,
-        content: p.content,
-        keywords: p.keywords,
-        feeling: p.feeling,
-        location: p.location,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        isPublic: p.is_public,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }));
+      return (data || []).map(mapPost);
     } catch (error) {
       console.error('Get posts by date error:', error);
       return [];

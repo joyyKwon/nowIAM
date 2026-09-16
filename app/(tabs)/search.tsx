@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
+import { getPostThumbnail } from '@/lib/utils';
 import { colors, fontSize, spacing, borderRadius } from '@/constants/theme';
 
 export default function SearchScreen() {
@@ -98,7 +99,7 @@ export default function SearchScreen() {
       onPress={() => router.push(`/post/${item.id}`)}
     >
       <Image
-        source={{ uri: item.imageUrl }}
+        source={{ uri: getPostThumbnail(item) }}
         style={styles.resultImage}
         resizeMode="cover"
       />
@@ -161,7 +162,7 @@ export default function SearchScreen() {
               onPress={() => handleSelectSuggestion(item)}
             >
               <Image
-                source={{ uri: item.imageUrl }}
+                source={{ uri: getPostThumbnail(item) }}
                 style={styles.suggestionImage}
                 resizeMode="cover"
               />

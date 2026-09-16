@@ -108,6 +108,18 @@ export function getMediaType(uri: string): 'image' | 'video' {
 }
 
 /**
+ * 게시물의 썸네일 URL (사진은 첫 번째 장, 동영상은 videoUrl)
+ */
+export function getPostThumbnail(post: {
+  mediaType: 'image' | 'video';
+  imageUrls?: string[];
+  videoUrl?: string;
+}): string | undefined {
+  if (post.mediaType === 'video') return post.videoUrl;
+  return post.imageUrls?.[0];
+}
+
+/**
  * 감정 점수를 이모지로 변환
  */
 export function getFeelingEmoji(feeling: number): string {

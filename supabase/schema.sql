@@ -24,11 +24,12 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
 
 -- 게시물 테이블
+-- 사진은 여러 장(post_images 테이블), 동영상은 1개(video_url) - 서로 배타적
 CREATE TABLE IF NOT EXISTS posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  image_url TEXT NOT NULL, -- 사진/동영상 URL
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video')),
+  video_url TEXT, -- media_type = 'video'일 때만 사용
   content TEXT,
   keywords TEXT[], -- 키워드 배열 (최대 3개)
   feeling INTEGER CHECK (feeling >= 0 AND feeling <= 10),
@@ -40,15 +41,31 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 기존 프로젝트 마이그레이션: 단일 image_url을 post_images 테이블로 분리
+-- (신규 프로젝트는 위 CREATE TABLE에서 이미 반영되어 있어 아래 두 줄은 실행할 필요 없음)
+ALTER TABLE posts DROP COLUMN IF EXISTS image_url;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url TEXT;
+
+-- 게시물 사진 테이블 (게시물 1개당 최대 10장, 앱에서 제한)
+CREATE TABLE IF NOT EXISTS post_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE NOT NULL,
+  image_url TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_keywords ON posts USING GIN(keywords);
 CREATE INDEX IF NOT EXISTS idx_profiles_device_id ON profiles(device_id);
+CREATE INDEX IF NOT EXISTS idx_post_images_post_id ON post_images(post_id);
 
 -- RLS (Row Level Security) 정책 설정
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE post_images ENABLE ROW LEVEL SECURITY;
 
 -- 프로필: 자신의 프로필만 읽기/수정 가능
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
@@ -86,6 +103,27 @@ DROP POLICY IF EXISTS "Users can delete own posts" ON posts;
 CREATE POLICY "Users can delete own posts"
   ON posts FOR DELETE
   USING (auth.uid() = user_id);
+
+-- 게시물 사진: 자신의 게시물에 딸린 사진만 읽기/수정/삭제 가능
+DROP POLICY IF EXISTS "Users can view own post images" ON post_images;
+CREATE POLICY "Users can view own post images"
+  ON post_images FOR SELECT
+  USING (EXISTS (SELECT 1 FROM posts WHERE posts.id = post_images.post_id AND posts.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Users can insert own post images" ON post_images;
+CREATE POLICY "Users can insert own post images"
+  ON post_images FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM posts WHERE posts.id = post_images.post_id AND posts.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Users can update own post images" ON post_images;
+CREATE POLICY "Users can update own post images"
+  ON post_images FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM posts WHERE posts.id = post_images.post_id AND posts.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Users can delete own post images" ON post_images;
+CREATE POLICY "Users can delete own post images"
+  ON post_images FOR DELETE
+  USING (EXISTS (SELECT 1 FROM posts WHERE posts.id = post_images.post_id AND posts.user_id = auth.uid()));
 
 -- updated_at 자동 업데이트 트리거
 CREATE OR REPLACE FUNCTION update_updated_at_column()

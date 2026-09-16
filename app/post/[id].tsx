@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomHeader } from '@/components/ui/CustomHeader';
@@ -24,6 +27,7 @@ export default function PostDetailScreen() {
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, deletePost } = usePostStore();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -122,7 +126,7 @@ export default function PostDetailScreen() {
         {currentPost.mediaType === 'video' ? (
           <View style={styles.videoContainer}>
             <Image
-              source={{ uri: currentPost.imageUrl }}
+              source={{ uri: currentPost.videoUrl }}
               style={styles.media}
               resizeMode="cover"
             />
@@ -131,11 +135,40 @@ export default function PostDetailScreen() {
             </View>
           </View>
         ) : (
-          <Image
-            source={{ uri: currentPost.imageUrl }}
-            style={styles.media}
-            resizeMode="cover"
-          />
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={{ flex: 1 }}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                setActiveImageIndex(index);
+              }}
+            >
+              {currentPost.imageUrls.map((url, index) => (
+                <Image
+                  key={url + index}
+                  source={{ uri: url }}
+                  style={[styles.media, { width: SCREEN_WIDTH }]}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+            {currentPost.imageUrls.length > 1 && (
+              <View style={styles.galleryDots}>
+                {currentPost.imageUrls.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.galleryDot,
+                      index === activeImageIndex && styles.galleryDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         )}
       </View>
 
@@ -233,6 +266,24 @@ const styles = StyleSheet.create({
   mediaContainer: {
     aspectRatio: 1,
     backgroundColor: colors.backgroundSecondary,
+  },
+  galleryDots: {
+    position: 'absolute',
+    bottom: spacing.md,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  galleryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  galleryDotActive: {
+    backgroundColor: colors.white,
   },
   media: {
     width: '100%',

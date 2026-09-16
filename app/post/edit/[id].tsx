@@ -22,6 +22,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
+import { MAX_POST_IMAGES } from '@/types/models';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function EditPostScreen() {
@@ -30,7 +31,8 @@ export default function EditPostScreen() {
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, updatePost } = usePostStore();
 
-  const [imageUri, setImageUri] = useState<string>('');
+  const [imageUris, setImageUris] = useState<string[]>([]);
+  const [videoUri, setVideoUri] = useState<string>('');
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [content, setContent] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -40,7 +42,6 @@ export default function EditPostScreen() {
   const [isPublic, setIsPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [imageChanged, setImageChanged] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -67,8 +68,9 @@ export default function EditPostScreen() {
 
   useEffect(() => {
     if (currentPost && currentPost.id === id) {
-      setImageUri(currentPost.imageUrl);
       setMediaType(currentPost.mediaType || 'image');
+      setImageUris(currentPost.imageUrls || []);
+      setVideoUri(currentPost.videoUrl || '');
       setContent(currentPost.content || '');
       setKeywords(currentPost.keywords || []);
       setFeeling(currentPost.feeling ?? 5);
@@ -87,16 +89,43 @@ export default function EditPostScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_POST_IMAGES,
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setImageUri(uri);
-      setMediaType(getMediaType(uri));
-      setImageChanged(true);
+    if (result.canceled || result.assets.length === 0) return;
+
+    const hasVideo = result.assets.some(a => getMediaType(a.uri) === 'video');
+    const hasImage = result.assets.some(a => getMediaType(a.uri) === 'image');
+
+    if (hasVideo && hasImage) {
+      Alert.alert('알림', '사진과 동영상은 함께 선택할 수 없습니다.');
+      return;
     }
+
+    if (hasVideo) {
+      if (result.assets.length > 1) {
+        Alert.alert('알림', '동영상은 1개만 선택할 수 있습니다.');
+        return;
+      }
+      setMediaType('video');
+      setVideoUri(result.assets[0].uri);
+      setImageUris([]);
+      return;
+    }
+
+    const newUris = result.assets.map(a => a.uri);
+    setMediaType('image');
+    setVideoUri('');
+    setImageUris(prev => {
+      const combined = [...prev, ...newUris];
+      if (combined.length > MAX_POST_IMAGES) {
+        Alert.alert('알림', `사진은 최대 ${MAX_POST_IMAGES}장까지 추가할 수 있습니다.`);
+        return combined.slice(0, MAX_POST_IMAGES);
+      }
+      return combined;
+    });
   };
 
   const takePhoto = async () => {
@@ -107,17 +136,25 @@ export default function EditPostScreen() {
       return;
     }
 
+    if (mediaType === 'image' && imageUris.length >= MAX_POST_IMAGES) {
+      Alert.alert('알림', `사진은 최대 ${MAX_POST_IMAGES}장까지 추가할 수 있습니다.`);
+      return;
+    }
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setImageUri(uri);
       setMediaType('image');
-      setImageChanged(true);
+      setVideoUri('');
+      setImageUris(prev => [...prev, result.assets[0].uri]);
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImageUris(prev => prev.filter((_, i) => i !== index));
   };
 
   const addKeyword = () => {
@@ -136,7 +173,9 @@ export default function EditPostScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!imageUri) {
+    const hasMedia = mediaType === 'video' ? !!videoUri : imageUris.length > 0;
+
+    if (!hasMedia) {
       Alert.alert('알림', '사진 또는 동영상을 선택해주세요.');
       return;
     }
@@ -154,26 +193,45 @@ export default function EditPostScreen() {
     try {
       setIsSubmitting(true);
 
-      let finalImageUrl = imageUri;
+      // 로컬 파일(file://, ph:// 등)만 새로 업로드, 이미 올라간 URL(http)은 그대로 사용
+      let finalImageUrls: string[] = [];
+      let finalVideoUrl: string | undefined;
 
-      // 이미지가 변경된 경우에만 새로 업로드
-      if (imageChanged) {
-        const extension = imageUri.split('.').pop() || 'jpg';
-        const fileName = generateFileName(profile.id, extension);
-        const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
+      if (mediaType === 'video') {
+        if (videoUri.startsWith('http')) {
+          finalVideoUrl = videoUri;
+        } else {
+          const extension = videoUri.split('.').pop() || 'mp4';
+          const fileName = generateFileName(profile.id, extension);
+          const { url, error } = await uploadFile('posts', fileName, videoUri, 'video/mp4');
 
-        const { url, error } = await uploadFile('posts', fileName, imageUri, contentType);
-
-        if (error || !url) {
-          throw new Error('파일 업로드 실패');
+          if (error || !url) {
+            throw new Error('파일 업로드 실패');
+          }
+          finalVideoUrl = url;
         }
+      } else {
+        for (const uri of imageUris) {
+          if (uri.startsWith('http')) {
+            finalImageUrls.push(uri);
+            continue;
+          }
 
-        finalImageUrl = url;
+          const extension = uri.split('.').pop() || 'jpg';
+          const fileName = generateFileName(profile.id, extension);
+          const { url, error } = await uploadFile('posts', fileName, uri, 'image/jpeg');
+
+          if (error || !url) {
+            throw new Error('파일 업로드 실패');
+          }
+          finalImageUrls.push(url);
+        }
       }
 
       // 게시물 업데이트
       await updatePost(id, {
-        imageUrl: finalImageUrl,
+        imageUrls: mediaType === 'image' ? finalImageUrls : [],
+        videoUrl: mediaType === 'video' ? finalVideoUrl : undefined,
         mediaType,
         content: content.trim() || undefined,
         keywords: keywords.length > 0 ? keywords : undefined,
@@ -208,6 +266,8 @@ export default function EditPostScreen() {
     );
   }
 
+  const hasMedia = mediaType === 'video' ? !!videoUri : imageUris.length > 0;
+
   return (
     <View style={styles.container}>
       <CustomHeader
@@ -220,8 +280,8 @@ export default function EditPostScreen() {
         headerRight={
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={!imageUri || isSubmitting}
-            style={{ opacity: !imageUri || isSubmitting ? 0.5 : 1 }}
+            disabled={!hasMedia || isSubmitting}
+            style={{ opacity: !hasMedia || isSubmitting ? 0.5 : 1 }}
           >
             <Text style={styles.headerSubmitText}>완료</Text>
           </TouchableOpacity>
@@ -235,13 +295,35 @@ export default function EditPostScreen() {
           <View style={styles.content}>
             {/* 이미지/동영상 선택 */}
         <View style={styles.mediaContainer}>
-          {imageUri ? (
+          {mediaType === 'video' && videoUri ? (
             <View style={styles.mediaPreview}>
-              <Image source={{ uri: imageUri }} style={styles.media} />
+              <Image source={{ uri: videoUri }} style={styles.media} />
+              <View style={styles.videoBadge}>
+                <Ionicons name="play-circle" size={20} color={colors.background} />
+              </View>
               <TouchableOpacity style={styles.changeMediaButton} onPress={pickImage}>
                 <Ionicons name="images" size={24} color={colors.background} />
               </TouchableOpacity>
             </View>
+          ) : imageUris.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageStrip}>
+              {imageUris.map((uri, index) => (
+                <View key={uri + index} style={styles.imageThumbWrapper}>
+                  <Image source={{ uri }} style={styles.imageThumb} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => removeImage(index)}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.background} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {imageUris.length < MAX_POST_IMAGES && (
+                <TouchableOpacity style={styles.addImageThumb} onPress={pickImage}>
+                  <Ionicons name="add" size={32} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+            </ScrollView>
           ) : (
             <View style={styles.mediaButtons}>
               <TouchableOpacity style={styles.mediaButton} onPress={takePhoto}>
@@ -253,6 +335,9 @@ export default function EditPostScreen() {
                 <Text style={styles.mediaButtonText}>앨범 선택</Text>
               </TouchableOpacity>
             </View>
+          )}
+          {mediaType === 'image' && imageUris.length > 0 && (
+            <Text style={styles.imageCountText}>{imageUris.length}/{MAX_POST_IMAGES}장</Text>
           )}
         </View>
 
@@ -346,7 +431,7 @@ export default function EditPostScreen() {
           size="lg"
           fullWidth
           loading={isSubmitting}
-          disabled={!imageUri || isSubmitting}
+          disabled={!hasMedia || isSubmitting}
         />
           </View>
         </ScrollView>
@@ -395,6 +480,53 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     padding: spacing.sm,
     borderRadius: borderRadius.full,
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: borderRadius.full,
+    padding: 2,
+  },
+  imageStrip: {
+    flexDirection: 'row',
+  },
+  imageThumbWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    marginRight: spacing.sm,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.backgroundSecondary,
+  },
+  imageThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: borderRadius.full,
+  },
+  addImageThumb: {
+    width: 100,
+    height: 100,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  imageCountText: {
+    marginTop: spacing.xs,
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    textAlign: 'right',
   },
   mediaButtons: {
     flexDirection: 'row',
