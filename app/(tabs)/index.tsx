@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { formatDate, getPostThumbnail } from '@/lib/utils';
+import { getHolidayName } from '@/lib/holidays';
 import { CalendarDay } from '@/components/ui/CalendarDay';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -46,6 +47,7 @@ export default function HomeScreen() {
   const [hasSelectedBefore, setHasSelectedBefore] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [visibleMonth, setVisibleMonth] = useState<string>(getTodayString());
 
   useEffect(() => {
     loadSettings();
@@ -135,12 +137,24 @@ export default function HomeScreen() {
 
   const getMarkedDates = () => {
     const marked: any = {};
+    const feelingsByDate: Record<string, number[]> = {};
+
     posts.forEach((post) => {
       const date = new Date(post.createdAt).toISOString().split('T')[0];
       marked[date] = {
+        ...marked[date],
         marked: true,
         dotColor: colors.primary,
       };
+
+      if (typeof post.feeling === 'number') {
+        (feelingsByDate[date] ||= []).push(post.feeling);
+      }
+    });
+
+    Object.entries(feelingsByDate).forEach(([date, feelings]) => {
+      const average = feelings.reduce((sum, f) => sum + f, 0) / feelings.length;
+      marked[date] = { ...marked[date], feeling: average };
     });
 
     if (selectedDate) {
@@ -161,6 +175,7 @@ export default function HomeScreen() {
 
   const handleDayPress = async (day: any) => {
     setSelectedDate(day.dateString);
+    setVisibleMonth(day.dateString);
 
     const date = new Date(day.dateString);
     const year = date.getFullYear();
@@ -181,7 +196,7 @@ export default function HomeScreen() {
   const isToday = selectedDate === getTodayString();
 
   const openMonthPicker = () => {
-    const base = selectedDate ? new Date(selectedDate) : new Date();
+    const base = new Date(visibleMonth);
     setPickerYear(base.getFullYear());
     setShowMonthPicker(true);
   };
@@ -193,7 +208,7 @@ export default function HomeScreen() {
   };
 
   const getMonthTitle = () => {
-    const base = new Date(selectedDate || getTodayString());
+    const base = new Date(visibleMonth);
     return `${base.getFullYear()}년 ${base.getMonth() + 1}월`;
   };
 
@@ -236,12 +251,13 @@ export default function HomeScreen() {
               <View style={styles.calendarContainer}>
                 <Calendar
                   key={`${selectedDate}-${firstDay}`}
-                  current={selectedDate || getTodayString()}
+                  current={visibleMonth}
                   markedDates={getMarkedDates()}
                   markingType="custom"
                   dayComponent={CalendarDay}
                   firstDay={firstDay}
                   onDayPress={handleDayPress}
+                  onMonthChange={(month: any) => setVisibleMonth(month.dateString)}
                   customHeaderTitle={
                     <TouchableOpacity style={styles.monthTitleButton} onPress={openMonthPicker}>
                       <Text style={styles.monthTitleText}>{getMonthTitle()}</Text>
@@ -269,9 +285,16 @@ export default function HomeScreen() {
 
               {selectedDate && (
                 <View style={styles.calendarPostsContainer}>
-                  <Text style={styles.calendarDateTitle}>
-                    {formatDate(selectedDate, 'short')}
-                  </Text>
+                  <View style={styles.calendarDateTitleRow}>
+                    <Text style={styles.calendarDateTitle}>
+                      {formatDate(selectedDate, 'short')}
+                    </Text>
+                    {getHolidayName(selectedDate) && (
+                      <Text style={styles.calendarHolidayText}>
+                        {getHolidayName(selectedDate)}
+                      </Text>
+                    )}
+                  </View>
 
                   {postsOnDate.length === 0 ? (
                     <Text style={styles.calendarEmptyText}>이 날짜에 게시물이 없습니다</Text>
@@ -333,7 +356,7 @@ export default function HomeScreen() {
 
                   <View style={styles.pickerMonthGrid}>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
-                      const base = new Date(selectedDate || getTodayString());
+                      const base = new Date(visibleMonth);
                       const isCurrent = pickerYear === base.getFullYear() && month === base.getMonth() + 1;
                       return (
                         <TouchableOpacity
@@ -569,10 +592,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  calendarDateTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   calendarDateTitle: {
     fontSize: fontSize.lg,
     color: colors.text,
-    marginBottom: spacing.md,
+  },
+  calendarHolidayText: {
+    fontSize: fontSize.sm,
+    color: colors.error,
   },
   calendarEmptyText: {
     fontSize: fontSize.md,

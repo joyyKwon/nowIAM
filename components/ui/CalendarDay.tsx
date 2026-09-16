@@ -4,6 +4,9 @@ import { fontSize, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { getHolidayName, getWeekendType } from '@/lib/holidays';
 
+// 기분 히트맵 색상 (티얼) - 다른 색으로 바꾸려면 이 한 줄만 수정
+const MOOD_COLOR_RGB = '29, 158, 117';
+
 interface CalendarDayDate {
   dateString: string;
   day: number;
@@ -15,7 +18,7 @@ interface CalendarDayDate {
 interface CalendarDayProps {
   date?: CalendarDayDate;
   state?: string;
-  marking?: { selected?: boolean; marked?: boolean; dotColor?: string };
+  marking?: { selected?: boolean; marked?: boolean; dotColor?: string; feeling?: number };
   onPress?: (date?: CalendarDayDate) => void;
   onLongPress?: (date?: CalendarDayDate) => void;
 }
@@ -32,6 +35,11 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
   const isToday = state === 'today';
   const isDisabled = state === 'disabled' || state === 'inactive';
 
+  const moodBackground =
+    marking?.feeling !== undefined
+      ? `rgba(${MOOD_COLOR_RGB}, ${0.12 + (marking.feeling / 10) * 0.55})`
+      : undefined;
+
   let textColor: string = colors.text;
   if (isDisabled) {
     textColor = colors.border;
@@ -47,7 +55,7 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, moodBackground && { backgroundColor: moodBackground }]}
       onPress={() => onPress?.(date)}
       onLongPress={() => onLongPress?.(date)}
       disabled={isDisabled}
@@ -56,13 +64,6 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
       <View style={[styles.dayCircle, isSelected && styles.dayCircleSelected]}>
         <Text style={[styles.dayText, { color: textColor }]}>{date.day}</Text>
       </View>
-      <View style={[styles.dot, !marking?.marked && styles.hidden]} />
-      <Text
-        style={[styles.holidayText, !holidayName && styles.hidden]}
-        numberOfLines={1}
-      >
-        {holidayName || ' '}
-      </Text>
     </TouchableOpacity>
   );
 }
@@ -70,11 +71,10 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: 42,
-    height: 50,
+    height: 44,
     alignItems: 'center',
-  },
-  hidden: {
-    opacity: 0,
+    justifyContent: 'center',
+    borderRadius: 6,
   },
   dayCircle: {
     width: 32,
@@ -88,18 +88,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   dayText: {
     fontSize: fontSize.md,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 0,
-  },
-  holidayText: {
-    fontSize: 9,
-    lineHeight: 10,
-    color: colors.error,
-    marginTop: -2,
   },
 });
