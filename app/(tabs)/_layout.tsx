@@ -1,14 +1,24 @@
 import { Tabs, useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { borderRadius } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAuthStore } from '@/stores/authStore';
+import { usePostStore } from '@/stores/postStore';
 
 const ICON_SIZE = 28;
 
 export default function TabsLayout() {
   const router = useRouter();
   const colors = useThemeColors();
+
+  const handleTitlePress = () => {
+    router.push('/(tabs)');
+    const profile = useAuthStore.getState().profile;
+    if (profile) {
+      usePostStore.getState().fetchPosts(profile.id);
+    }
+  };
 
   return (
     <Tabs
@@ -26,13 +36,13 @@ export default function TabsLayout() {
           backgroundColor: colors.background,
           height: 110,
         },
-        headerTitleStyle: {
-          color: colors.primary,
-          fontSize: 22,
-          fontWeight: 'bold',
-          letterSpacing: 1,
-        },
-        headerTitle: 'nowIAM',
+        headerTitle: () => (
+          <TouchableOpacity onPress={handleTitlePress} hitSlop={12}>
+            <Text style={{ color: colors.primary, fontSize: 22, fontWeight: 'bold', letterSpacing: 1 }}>
+              nowIAM
+            </Text>
+          </TouchableOpacity>
+        ),
       }}
     >
       <Tabs.Screen

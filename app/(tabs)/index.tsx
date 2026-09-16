@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  RefreshControl,
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -49,6 +50,7 @@ export default function HomeScreen() {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const [visibleMonth, setVisibleMonth] = useState<string>(getTodayString());
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -179,6 +181,16 @@ export default function HomeScreen() {
     return marked;
   };
 
+  const onRefresh = async () => {
+    if (!profile) return;
+    setRefreshing(true);
+    await fetchPosts(profile.id, sortOrder);
+    if (viewMode === 'calendar' && selectedDate) {
+      await handleDayPress({ dateString: selectedDate });
+    }
+    setRefreshing(false);
+  };
+
   const handleDayPress = async (day: any) => {
     setSelectedDate(day.dateString);
     setVisibleMonth(day.dateString);
@@ -221,10 +233,15 @@ export default function HomeScreen() {
   const renderContent = () => {
     if (posts.length === 0 && !isLoading) {
       return (
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={styles.emptyContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+        >
           <Text style={styles.emptyText}>아직 게시물이 없습니다</Text>
           <Text style={styles.emptySubtext}>첫 게시물을 작성해보세요!</Text>
-        </View>
+        </ScrollView>
       );
     }
 
@@ -238,6 +255,9 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             numColumns={3}
             contentContainerStyle={styles.grid}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            }
           />
         );
       case 'list':
@@ -248,12 +268,19 @@ export default function HomeScreen() {
             renderItem={renderListItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            }
           />
         );
       case 'calendar':
         return (
           <View style={{ flex: 1 }}>
-            <ScrollView>
+            <ScrollView
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+              }
+            >
               <View style={styles.calendarContainer}>
                 <Calendar
                   key={`${selectedDate}-${firstDay}`}
@@ -577,7 +604,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
   },
   emptyContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
