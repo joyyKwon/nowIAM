@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS posts (
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video')),
   video_url TEXT, -- media_type = 'video'일 때만 사용
   content TEXT,
-  keywords TEXT[], -- 키워드 배열 (최대 3개)
+  keywords TEXT[], -- 키워드 배열 (최대 10개)
   feeling INTEGER CHECK (feeling >= 0 AND feeling <= 10),
   location TEXT,
   latitude DECIMAL(10, 8),

@@ -17,6 +17,7 @@ export interface Profile {
 }
 
 export const MAX_POST_IMAGES = 10;
+export const MAX_POST_KEYWORDS = 10;
 
 export interface Post {
   id: string;

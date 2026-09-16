@@ -19,6 +19,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   signUp: (email: string, password: string, profileData: { name: string; birth?: string; sex?: string; about?: string; profileImage?: string }) => Promise<{ success: boolean; error?: string }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInWithProvider: (provider: AuthProvider) => Promise<{ success: boolean; error?: string; needsProfile?: boolean }>;
@@ -99,6 +100,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Initialize error:', error);
       set({ isLoading: false, isAuthenticated: false });
     }
+  },
+
+  refreshProfile: async () => {
+    const { user } = get();
+    if (!user) return;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single() as any;
+
+    if (error || !profile) return;
+
+    set({
+      profile: {
+        id: profile.id,
+        deviceId: profile.device_id,
+        email: profile.email,
+        name: profile.name,
+        birth: profile.birth,
+        sex: profile.sex,
+        about: profile.about,
+        profileImage: profile.profile_image,
+        password: profile.password,
+        passwordEnabled: profile.password_enabled,
+        authProvider: profile.auth_provider,
+        createdAt: profile.created_at,
+        updatedAt: profile.updated_at,
+      },
+    });
   },
 
   signUp: async (email, password, profileData) => {

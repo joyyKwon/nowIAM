@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   Image,
   TouchableOpacity,
   TextInput,
@@ -41,7 +42,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const { profile, removePassword, signOut, updateProfile } = useAuthStore();
+  const { profile, removePassword, signOut, updateProfile, refreshProfile } = useAuthStore();
   const { posts, fetchPosts } = usePostStore();
   const {
     firstDay,
@@ -55,6 +56,7 @@ export default function ProfileScreen() {
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -65,6 +67,15 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshProfile();
+    if (profile) {
+      await fetchPosts(profile.id);
+    }
+    setRefreshing(false);
+  };
 
   const handleProfileImagePress = () => {
     if (!profile?.profileImage) {
@@ -195,8 +206,17 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const recordedDays = new Set(
+    posts.map((post) => new Date(post.createdAt).toISOString().split('T')[0])
+  ).size;
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.profileImageContainer}
@@ -217,8 +237,12 @@ export default function ProfileScreen() {
 
         <View style={styles.statsContainer}>
           <View style={styles.stat}>
+            <Text style={styles.statNumber}>{recordedDays}</Text>
+            <Text style={styles.statLabel}>기록일</Text>
+          </View>
+          <View style={styles.stat}>
             <Text style={styles.statNumber}>{posts.length}</Text>
-            <Text style={styles.statLabel}>게시물</Text>
+            <Text style={styles.statLabel}>일기</Text>
           </View>
         </View>
       </View>
@@ -433,6 +457,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statsContainer: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
   stat: {
     alignItems: 'center',

@@ -1,4 +1,5 @@
 import * as Crypto from 'expo-crypto';
+import { MAX_POST_KEYWORDS } from '@/types/models';
 
 /**
  * 날짜 포맷팅 함수
@@ -61,7 +62,7 @@ export async function generateDeviceId(): Promise<string> {
  * 키워드 유효성 검사
  */
 export function validateKeywords(keywords: string[]): boolean {
-  if (keywords.length > 3) return false;
+  if (keywords.length > MAX_POST_KEYWORDS) return false;
   return keywords.every(k => k.length > 0 && k.length <= 20);
 }
 

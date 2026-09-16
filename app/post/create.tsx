@@ -22,7 +22,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
-import { MAX_POST_IMAGES } from '@/types/models';
+import { MAX_POST_IMAGES, MAX_POST_KEYWORDS } from '@/types/models';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -132,8 +132,8 @@ export default function CreatePostScreen() {
 
   const addKeyword = () => {
     if (newKeyword.trim() === '') return;
-    if (keywords.length >= 3) {
-      Alert.alert('알림', '키워드는 최대 3개까지 추가할 수 있습니다.');
+    if (keywords.length >= MAX_POST_KEYWORDS) {
+      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
       return;
     }
 
@@ -159,7 +159,7 @@ export default function CreatePostScreen() {
     }
 
     if (keywords.length > 0 && !validateKeywords(keywords)) {
-      Alert.alert('알림', '키워드는 최대 3개, 각 20자 이하로 입력해주세요.');
+      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개, 각 20자 이하로 입력해주세요.`);
       return;
     }
 
@@ -312,7 +312,7 @@ export default function CreatePostScreen() {
 
         {/* 키워드 */}
         <View style={styles.section}>
-          <Text style={styles.label}>키워드 (최대 3개)</Text>
+          <Text style={styles.label}>키워드 (최대 {MAX_POST_KEYWORDS}개)</Text>
           <View style={styles.keywordsContainer}>
             {keywords.map((keyword, index) => (
               <TouchableOpacity
@@ -325,7 +325,7 @@ export default function CreatePostScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {keywords.length < 3 && (
+          {keywords.length < MAX_POST_KEYWORDS && (
             <View style={styles.keywordInputContainer}>
               <TextInput
                 style={styles.keywordInput}
