@@ -1,8 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
 import { colors, fontSize, spacing } from '@/constants/theme';
+
+const INTRO_GRADIENT_COLORS = ['#88A8E4', '#B7B9DE', '#F7C1CB', '#FDBBBB'] as const;
+const INTRO_GRADIENT_LOCATIONS = [0, 0.3, 0.6, 1] as const;
 
 export default function IntroScreen() {
   const router = useRouter();
@@ -35,10 +39,10 @@ export default function IntroScreen() {
 
   if (isLoading) {
     return (
-      <ImageBackground
-        source={require('@/assets/images/intro1.jpg')}
+      <LinearGradient
+        colors={INTRO_GRADIENT_COLORS}
+        locations={INTRO_GRADIENT_LOCATIONS}
         style={styles.container}
-        resizeMode="cover"
       >
         <View style={styles.content}>
           <View style={styles.titleBox}>
@@ -46,15 +50,15 @@ export default function IntroScreen() {
           </View>
           <Text style={styles.loadingText}>로딩중...</Text>
         </View>
-      </ImageBackground>
+      </LinearGradient>
     );
   }
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/intro1.jpg')}
+    <LinearGradient
+      colors={INTRO_GRADIENT_COLORS}
+      locations={INTRO_GRADIENT_LOCATIONS}
       style={styles.container}
-      resizeMode="cover"
     >
       <View style={styles.content}>
         <View style={styles.titleBox}>
@@ -71,7 +75,7 @@ export default function IntroScreen() {
           <Text style={styles.signupButtonText}>회원가입</Text>
         </TouchableOpacity>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
@@ -84,11 +88,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 50,
   },
   titleBox: {
+    alignSelf: 'stretch',
     borderWidth: 1,
     borderColor: colors.white,
     paddingVertical: spacing.xl * 1.5,

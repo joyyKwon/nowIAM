@@ -3,7 +3,6 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useIsDarkMode } from '@/hooks/useThemeColors';
 import { useSettingsStore } from '@/stores/settingsStore';
-import '../global.css';
 
 export default function RootLayout() {
   const isDarkMode = useIsDarkMode();
