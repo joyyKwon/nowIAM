@@ -42,7 +42,7 @@ export default function IntroScreen() {
       >
         <View style={styles.content}>
           <View style={styles.titleBox}>
-            <Text style={styles.title}>now I AM</Text>
+            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>nowIAM</Text>
           </View>
           <Text style={styles.loadingText}>로딩중...</Text>
         </View>
@@ -58,7 +58,7 @@ export default function IntroScreen() {
     >
       <View style={styles.content}>
         <View style={styles.titleBox}>
-          <Text style={styles.title}>now I AM</Text>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>nowIAM</Text>
         </View>
         <Text style={styles.subtitle}>나의 일상을 기록하다</Text>
       </View>
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.white,
     paddingVertical: spacing.xl * 1.5,
-    paddingHorizontal: spacing.xl * 2,
+    paddingHorizontal: spacing.xl,
     backgroundColor: 'transparent',
   },
   title: {
