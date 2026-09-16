@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { isValidBirthDate } from '@/lib/utils';
+import { requestNotificationPermission, refreshReminderSchedule } from '@/lib/notifications';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemeMode } from '@/stores/settingsStore';
@@ -40,7 +41,15 @@ export default function ProfileScreen() {
   const styles = createStyles(colors);
   const { profile, removePassword, signOut, updateProfile } = useAuthStore();
   const { posts, fetchPosts } = usePostStore();
-  const { firstDay, themeMode, loadSettings, setFirstDay, setThemeMode } = useSettingsStore();
+  const {
+    firstDay,
+    themeMode,
+    notificationsEnabled,
+    loadSettings,
+    setFirstDay,
+    setThemeMode,
+    setNotificationsEnabled,
+  } = useSettingsStore();
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftValue, setDraftValue] = useState('');
 
@@ -99,6 +108,19 @@ export default function ProfileScreen() {
       console.error('Update sex error:', error);
       Alert.alert('오류', '수정 중 오류가 발생했습니다.');
     }
+  };
+
+  const handleToggleNotifications = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('알림 권한 필요', '기기 설정에서 알림 권한을 허용해주세요.');
+        return;
+      }
+    }
+
+    await setNotificationsEnabled(value);
+    await refreshReminderSchedule(value, posts);
   };
 
   const handleLogout = () => {
@@ -257,6 +279,15 @@ export default function ProfileScreen() {
           <Switch
             value={firstDay === 1}
             onValueChange={(value) => setFirstDay(value ? 1 : 0)}
+            trackColor={{ false: colors.border, true: colors.primary }}
+          />
+        </View>
+
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>일기 리마인더 알림</Text>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleToggleNotifications}
             trackColor={{ false: colors.border, true: colors.primary }}
           />
         </View>

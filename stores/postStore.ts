@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Post, CreatePostInput, UpdatePostInput } from '@/types/models';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { refreshReminderSchedule } from '@/lib/notifications';
 
 const POST_SELECT = '*, post_images(image_url, position)';
 
@@ -125,6 +127,10 @@ export const usePostStore = create<PostState>((set, get) => ({
       newPost.imageUrls = input.mediaType === 'image' ? (input.imageUrls ?? []) : [];
 
       set(state => ({ posts: [newPost, ...state.posts] }));
+
+      const { notificationsEnabled } = useSettingsStore.getState();
+      refreshReminderSchedule(notificationsEnabled, get().posts).catch(() => {});
+
       return newPost;
     } catch (error) {
       console.error('Create post error:', error);

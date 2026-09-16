@@ -18,6 +18,7 @@ import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { formatDate, getPostThumbnail } from '@/lib/utils';
 import { getHolidayName } from '@/lib/holidays';
+import { refreshReminderSchedule } from '@/lib/notifications';
 import { CalendarDay } from '@/components/ui/CalendarDay';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -39,7 +40,7 @@ export default function HomeScreen() {
   const styles = createStyles(colors);
   const { profile } = useAuthStore();
   const { posts, fetchPosts, isLoading } = usePostStore();
-  const { firstDay, loadSettings } = useSettingsStore();
+  const { firstDay, loadSettings, notificationsEnabled } = useSettingsStore();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -58,6 +59,11 @@ export default function HomeScreen() {
       fetchPosts(profile.id, sortOrder);
     }
   }, [profile, sortOrder]);
+
+  // 알림 설정/게시물 변동 시 다음 리마인더 재계산
+  useEffect(() => {
+    refreshReminderSchedule(notificationsEnabled, posts);
+  }, [notificationsEnabled, posts]);
 
   // 달력 모드로 전환 시 오늘 날짜 자동 선택 (첫 번째 접근 시에만)
   useEffect(() => {

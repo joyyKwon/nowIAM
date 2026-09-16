@@ -69,7 +69,8 @@
         {
           "locationWhenInUsePermission": "게시물에 위치 정보를 추가하기 위해 위치 접근이 필요합니다."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
