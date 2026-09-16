@@ -16,7 +16,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { isValidBirthDate } from '@/lib/utils';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { ThemeMode } from '@/stores/settingsStore';
 
 type EditableField = 'name' | 'birth' | 'sex' | 'about';
 
@@ -26,11 +28,19 @@ const SEX_LABELS: Record<string, string> = {
   other: '기타',
 };
 
+const THEME_MODE_LABELS: Record<ThemeMode, string> = {
+  system: '시스템',
+  light: '라이트',
+  dark: '다크',
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { profile, removePassword, signOut, updateProfile } = useAuthStore();
   const { posts, fetchPosts } = usePostStore();
-  const { firstDay, loadSettings, setFirstDay } = useSettingsStore();
+  const { firstDay, themeMode, loadSettings, setFirstDay, setThemeMode } = useSettingsStore();
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftValue, setDraftValue] = useState('');
 
@@ -251,6 +261,28 @@ export default function ProfileScreen() {
           />
         </View>
 
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>화면 테마</Text>
+          <View style={styles.sexInlineButtons}>
+            {(['system', 'light', 'dark'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.sexInlineButton, themeMode === mode && styles.sexInlineButtonActive]}
+                onPress={() => setThemeMode(mode)}
+              >
+                <Text
+                  style={[
+                    styles.sexInlineButtonText,
+                    themeMode === mode && styles.sexInlineButtonTextActive,
+                  ]}
+                >
+                  {THEME_MODE_LABELS[mode]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
           <Text style={[styles.settingLabel, styles.logoutLabel]}>로그아웃</Text>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
@@ -265,7 +297,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius } from '@/constants/theme';
+import { spacing, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface PinDisplayProps {
   length: number;
@@ -8,6 +9,9 @@ interface PinDisplayProps {
 }
 
 export function PinDisplay({ length, maxLength = 4 }: PinDisplayProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       {Array.from({ length: maxLength }).map((_, index) => (
@@ -23,7 +27,7 @@ export function PinDisplay({ length, maxLength = 4 }: PinDisplayProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     gap: spacing.md,

@@ -19,10 +19,13 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { isValidBirthDate } from '@/lib/utils';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { signUp } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -317,7 +320,7 @@ export default function SignUpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

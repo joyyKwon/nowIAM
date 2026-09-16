@@ -23,7 +23,8 @@ import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
 import { MAX_POST_IMAGES } from '@/types/models';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface LocationData {
   latitude: number;
@@ -33,6 +34,8 @@ interface LocationData {
 
 export default function CreatePostScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { profile } = useAuthStore();
   const { createPost } = usePostStore();
 
@@ -429,7 +432,7 @@ export default function CreatePostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

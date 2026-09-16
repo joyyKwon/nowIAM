@@ -1,12 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius } from '@/constants/theme';
+import { fontSize, spacing, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface PinPadProps {
   onPress: (value: string) => void;
 }
 
 export function PinPad({ onPress }: PinPadProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   const buttons = [
     ['1', '2', '3'],
     ['4', '5', '6'],
@@ -34,7 +38,7 @@ export function PinPad({ onPress }: PinPadProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: '100%',
     maxWidth: 300,
@@ -48,7 +52,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.white,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

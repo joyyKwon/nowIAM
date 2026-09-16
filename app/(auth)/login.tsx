@@ -17,10 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { AuthProvider } from '@/lib/auth';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { signIn, signInWithProvider } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -213,7 +216,7 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

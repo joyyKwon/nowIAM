@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { fontSize, spacing, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface CustomHeaderProps {
   title: string;
@@ -20,6 +21,8 @@ export function CustomHeader({
 }: CustomHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -46,7 +49,7 @@ export function CustomHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     backgroundColor: colors.background,
     borderBottomWidth: 1,

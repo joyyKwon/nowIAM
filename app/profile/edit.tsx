@@ -15,10 +15,13 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { isValidBirthDate } from '@/lib/utils';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { profile, updateProfile } = useAuthStore();
 
   const [profileImage, setProfileImage] = useState(profile?.profileImage || '');
@@ -196,7 +199,7 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

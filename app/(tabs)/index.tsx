@@ -18,7 +18,8 @@ import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { formatDate, getPostThumbnail } from '@/lib/utils';
 import { CalendarDay } from '@/components/ui/CalendarDay';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;
@@ -33,6 +34,8 @@ const getTodayString = () => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { profile } = useAuthStore();
   const { posts, fetchPosts, isLoading } = usePostStore();
   const { firstDay, loadSettings } = useSettingsStore();
@@ -424,7 +427,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

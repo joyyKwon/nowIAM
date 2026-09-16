@@ -1,9 +1,18 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useIsDarkMode } from '@/hooks/useThemeColors';
+import { useSettingsStore } from '@/stores/settingsStore';
 import '../global.css';
 
 export default function RootLayout() {
+  const isDarkMode = useIsDarkMode();
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
   return (
     <>
       <Stack
@@ -16,7 +25,7 @@ export default function RootLayout() {
         <Stack.Screen name="post" />
         <Stack.Screen name="profile" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
     </>
   );
 }

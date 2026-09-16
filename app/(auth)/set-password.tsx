@@ -6,10 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PinPad } from '@/components/ui/PinPad';
 import { PinDisplay } from '@/components/ui/PinDisplay';
 import { useAuthStore } from '@/stores/authStore';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { fontSize, spacing, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function SetPasswordScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { setPassword } = useAuthStore();
   const [step, setStep] = useState<'first' | 'confirm'>('first');
   const [firstPin, setFirstPin] = useState('');
@@ -79,7 +82,7 @@ export default function SetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

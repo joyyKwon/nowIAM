@@ -23,10 +23,13 @@ import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { getMediaType, validateKeywords } from '@/lib/utils';
 import { MAX_POST_IMAGES } from '@/types/models';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function EditPostScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, updatePost } = usePostStore();
@@ -440,7 +443,7 @@ export default function EditPostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

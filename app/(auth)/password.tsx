@@ -4,10 +4,13 @@ import { useRouter } from 'expo-router';
 import { PinPad } from '@/components/ui/PinPad';
 import { PinDisplay } from '@/components/ui/PinDisplay';
 import { useAuthStore } from '@/stores/authStore';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { fontSize, spacing, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function PasswordScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { checkPassword } = useAuthStore();
   const [pin, setPin] = useState('');
   const [message, setMessage] = useState(' ');
@@ -48,7 +51,7 @@ export default function PasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

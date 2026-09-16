@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors, fontSize, borderRadius, spacing } from '@/constants/theme';
+import { fontSize, borderRadius, spacing, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface ButtonProps {
   title: string;
@@ -21,6 +22,9 @@ export function Button({
   loading = false,
   fullWidth = false,
 }: ButtonProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyle: ViewStyle[] = [styles.button];
 
@@ -68,7 +72,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',

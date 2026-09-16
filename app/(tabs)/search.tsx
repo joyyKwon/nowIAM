@@ -15,10 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { getPostThumbnail } from '@/lib/utils';
-import { colors, fontSize, spacing, borderRadius } from '@/constants/theme';
+import { fontSize, spacing, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function SearchScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { profile } = useAuthStore();
   const { searchPosts } = usePostStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,7 +220,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

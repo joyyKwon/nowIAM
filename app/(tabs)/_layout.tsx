@@ -1,12 +1,14 @@
 import { Tabs, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, borderRadius } from '@/constants/theme';
+import { borderRadius } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const ICON_SIZE = 28;
 
 export default function TabsLayout() {
   const router = useRouter();
+  const colors = useThemeColors();
 
   return (
     <Tabs
@@ -16,6 +18,8 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           paddingTop: 12,
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
         },
         headerShown: true,
         headerStyle: {

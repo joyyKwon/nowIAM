@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, fontSize } from '@/constants/theme';
+import { fontSize, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { getHolidayName, getWeekendType } from '@/lib/holidays';
 
 interface CalendarDayDate {
@@ -20,6 +21,9 @@ interface CalendarDayProps {
 }
 
 export function CalendarDay({ date, state, marking, onPress, onLongPress }: CalendarDayProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   if (!date) return null;
 
   const holidayName = getHolidayName(date.dateString);
@@ -63,7 +67,7 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: 42,
     height: 50,

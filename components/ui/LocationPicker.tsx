@@ -14,7 +14,8 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const GOOGLE_PLACES_API_KEY = 'AIzaSyAZRjF_OXnQH0S8VC8vlMApgDVksv5VzbA';
 
@@ -53,6 +54,8 @@ export function LocationPicker({
   onSelectLocation,
   initialLocation,
 }: LocationPickerProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const mapRef = useRef<MapView>(null);
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
@@ -363,7 +366,7 @@ export function LocationPicker({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -18,11 +18,14 @@ import { CustomHeader } from '@/components/ui/CustomHeader';
 import { usePostStore } from '@/stores/postStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatDate, getFeelingEmoji } from '@/lib/utils';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { format } from 'date-fns';
 
 export default function PostDetailScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, deletePost } = usePostStore();
@@ -222,7 +225,7 @@ export default function PostDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

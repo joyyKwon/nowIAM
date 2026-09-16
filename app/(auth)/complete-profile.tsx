@@ -21,10 +21,13 @@ import { supabase } from '@/lib/supabase';
 import { getOrCreateDeviceId } from '@/lib/auth';
 import { uploadFile } from '@/lib/storage';
 import { isValidBirthDate } from '@/lib/utils';
-import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
+import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function CompleteProfileScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const { user } = useAuthStore();
 
   const [name, setName] = useState('');
@@ -227,7 +230,7 @@ export default function CompleteProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
