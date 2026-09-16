@@ -95,10 +95,13 @@ export default function PostDetailScreen() {
       {/* 헤더 */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Image
-            source={{ uri: profile?.profileImage || 'https://via.placeholder.com/40' }}
-            style={styles.avatar}
-          />
+          {profile?.profileImage ? (
+            <Image source={{ uri: profile.profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={20} color={colors.textSecondary} />
+            </View>
+          )}
           <View>
             <Text style={styles.userName}>{profile?.name || '이름 없음'}</Text>
             <Text style={styles.location}>{currentPost.location || ''}</Text>
@@ -256,6 +259,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.full,
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userName: {
     fontSize: fontSize.md,

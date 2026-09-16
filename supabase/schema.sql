@@ -145,3 +145,55 @@ CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON posts
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- Storage 버킷 (프로필 사진, 게시물 사진/영상 업로드용)
+-- ============================================================
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profiles', 'profiles', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('posts', 'posts', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Public read profiles bucket" ON storage.objects;
+CREATE POLICY "Public read profiles bucket"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'profiles');
+
+DROP POLICY IF EXISTS "Authenticated upload profiles bucket" ON storage.objects;
+CREATE POLICY "Authenticated upload profiles bucket"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'profiles' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated update profiles bucket" ON storage.objects;
+CREATE POLICY "Authenticated update profiles bucket"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'profiles' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated delete profiles bucket" ON storage.objects;
+CREATE POLICY "Authenticated delete profiles bucket"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'profiles' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Public read posts bucket" ON storage.objects;
+CREATE POLICY "Public read posts bucket"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'posts');
+
+DROP POLICY IF EXISTS "Authenticated upload posts bucket" ON storage.objects;
+CREATE POLICY "Authenticated upload posts bucket"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'posts' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated update posts bucket" ON storage.objects;
+CREATE POLICY "Authenticated update posts bucket"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'posts' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated delete posts bucket" ON storage.objects;
+CREATE POLICY "Authenticated delete posts bucket"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'posts' AND auth.role() = 'authenticated');

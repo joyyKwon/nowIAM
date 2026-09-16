@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { isValidBirthDate } from '@/lib/utils';
+import { uploadFile, generateFileName } from '@/lib/storage';
 import { requestNotificationPermission, refreshReminderSchedule } from '@/lib/notifications';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -52,6 +54,7 @@ export default function ProfileScreen() {
   } = useSettingsStore();
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftValue, setDraftValue] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -63,8 +66,63 @@ export default function ProfileScreen() {
     loadSettings();
   }, []);
 
-  const handleEditProfile = () => {
-    router.push('/profile/edit');
+  const handleProfileImagePress = () => {
+    if (!profile?.profileImage) {
+      handlePickProfileImage();
+      return;
+    }
+
+    Alert.alert('프로필 사진', undefined, [
+      { text: '사진 변경', onPress: handlePickProfileImage },
+      { text: '기본 이미지로 변경', style: 'destructive', onPress: handleRemoveProfileImage },
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
+
+  const handleRemoveProfileImage = async () => {
+    try {
+      setIsUploadingImage(true);
+      await updateProfile({ profileImage: '' });
+    } catch (error) {
+      console.error('Remove profile image error:', error);
+      Alert.alert('오류', '프로필 사진 삭제에 실패했습니다.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handlePickProfileImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('권한 필요', '사진 라이브러리 접근 권한이 필요합니다.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    try {
+      setIsUploadingImage(true);
+      const uri = result.assets[0].uri;
+      const extension = uri.split('.').pop() || 'jpg';
+      const fileName = generateFileName('profile', extension);
+
+      const { url, error } = await uploadFile('profiles', fileName, uri, 'image/jpeg');
+      if (error || !url) throw new Error('이미지 업로드 실패');
+
+      await updateProfile({ profileImage: url });
+    } catch (error) {
+      console.error('Update profile image error:', error);
+      Alert.alert('오류', '프로필 사진 변경에 실패했습니다.');
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handlePasswordToggle = async (value: boolean) => {
@@ -137,16 +195,24 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const defaultProfileImage = 'https://via.placeholder.com/150';
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.profileImageContainer}>
-          <Image
-            source={{ uri: profile?.profileImage || defaultProfileImage }}
-            style={styles.profileImage}
-          />
+        <TouchableOpacity
+          style={styles.profileImageContainer}
+          onPress={handleProfileImagePress}
+          disabled={isUploadingImage}
+        >
+          {profile?.profileImage ? (
+            <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.profileImagePlaceholder}>
+              <Ionicons name="person" size={48} color={colors.textSecondary} />
+            </View>
+          )}
+          <View style={styles.profileImageOverlay}>
+            <Ionicons name="camera" size={16} color={colors.white} />
+          </View>
         </TouchableOpacity>
 
         <View style={styles.statsContainer}>
@@ -319,11 +385,6 @@ export default function ProfileScreen() {
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-        <Ionicons name="create-outline" size={20} color={colors.background} />
-        <Text style={styles.editButtonText}>프로필 수정</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -342,11 +403,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   profileImageContainer: {
     marginRight: spacing.xl,
+    position: 'relative',
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: borderRadius.full,
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
   },
   statsContainer: {
     flex: 1,
@@ -472,20 +555,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   logoutLabel: {
     color: colors.error,
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    margin: spacing.xl,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-  },
-  editButtonText: {
-    fontSize: fontSize.md,
-    color: colors.background,
-    fontWeight: '600',
   },
 });
