@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { formatDate } from '@/lib/utils';
 import { CalendarDay } from '@/components/ui/CalendarDay';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuthStore();
   const { posts, fetchPosts, isLoading } = usePostStore();
+  const { firstDay, loadSettings } = useSettingsStore();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -41,6 +43,10 @@ export default function HomeScreen() {
   const [hasSelectedBefore, setHasSelectedBefore] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -221,11 +227,12 @@ export default function HomeScreen() {
             <ScrollView>
               <View style={styles.calendarContainer}>
                 <Calendar
-                  key={selectedDate}
+                  key={`${selectedDate}-${firstDay}`}
                   current={selectedDate || getTodayString()}
                   markedDates={getMarkedDates()}
                   markingType="custom"
                   dayComponent={CalendarDay}
+                  firstDay={firstDay}
                   onDayPress={handleDayPress}
                   customHeaderTitle={
                     <TouchableOpacity style={styles.monthTitleButton} onPress={openMonthPicker}>
