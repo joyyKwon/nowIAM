@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
+import { isValidBirthDate } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function SignUpScreen() {
@@ -80,6 +81,11 @@ export default function SignUpScreen() {
 
     if (password !== confirmPassword) {
       Alert.alert('알림', '비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (birth && !isValidBirthDate(birth)) {
+      Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
 

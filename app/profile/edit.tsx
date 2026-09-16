@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
+import { isValidBirthDate } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function EditProfileScreen() {
@@ -50,6 +51,11 @@ export default function EditProfileScreen() {
   const handleSubmit = async () => {
     if (!profile) {
       Alert.alert('오류', '사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    if (birth && !isValidBirthDate(birth)) {
+      Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
 

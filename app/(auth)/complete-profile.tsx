@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { getOrCreateDeviceId } from '@/lib/auth';
 import { uploadFile } from '@/lib/storage';
+import { isValidBirthDate } from '@/lib/utils';
 import { colors, spacing, fontSize, borderRadius } from '@/constants/theme';
 
 export default function CompleteProfileScreen() {
@@ -61,6 +62,11 @@ export default function CompleteProfileScreen() {
 
     if (!user) {
       Alert.alert('오류', '사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    if (birth && !isValidBirthDate(birth)) {
+      Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
 

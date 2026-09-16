@@ -66,6 +66,26 @@ export function validateKeywords(keywords: string[]): boolean {
 }
 
 /**
+ * 생년월일(YYYY-MM-DD) 유효성 검사 - 형식, 실존 날짜, 미래 날짜 여부 확인
+ */
+export function isValidBirthDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const isRealDate =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day;
+
+  if (!isRealDate) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date <= today;
+}
+
+/**
  * 파일 확장자 추출
  */
 export function getFileExtension(uri: string): string {
