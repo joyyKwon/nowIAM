@@ -4,8 +4,18 @@ import { fontSize, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { getHolidayName, getWeekendType } from '@/lib/holidays';
 
-// 기분 히트맵 색상 (티얼) - 다른 색으로 바꾸려면 이 한 줄만 수정
-const MOOD_COLOR_RGB = '29, 158, 117';
+// 기분 히트맵 색상 (골드/호박색 기반, 낮은 기분엔 회색을 살짝 섞음)
+const MOOD_COLOR_LOW: [number, number, number] = [233, 191, 122];
+const MOOD_COLOR_HIGH: [number, number, number] = [250, 181, 45];
+
+function getMoodBackground(feeling: number): string {
+  const t = Math.max(0, Math.min(1, feeling / 10));
+  const r = Math.round(MOOD_COLOR_LOW[0] + (MOOD_COLOR_HIGH[0] - MOOD_COLOR_LOW[0]) * t);
+  const g = Math.round(MOOD_COLOR_LOW[1] + (MOOD_COLOR_HIGH[1] - MOOD_COLOR_LOW[1]) * t);
+  const b = Math.round(MOOD_COLOR_LOW[2] + (MOOD_COLOR_HIGH[2] - MOOD_COLOR_LOW[2]) * t);
+  const alpha = 0.3 + t * 0.22;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 interface CalendarDayDate {
   dateString: string;
@@ -36,9 +46,7 @@ export function CalendarDay({ date, state, marking, onPress, onLongPress }: Cale
   const isDisabled = state === 'disabled' || state === 'inactive';
 
   const moodBackground =
-    marking?.feeling !== undefined
-      ? `rgba(${MOOD_COLOR_RGB}, ${0.12 + (marking.feeling / 10) * 0.55})`
-      : undefined;
+    marking?.feeling !== undefined ? getMoodBackground(marking.feeling) : undefined;
 
   let textColor: string = colors.text;
   if (isDisabled) {
