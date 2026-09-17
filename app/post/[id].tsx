@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MEDIA_MARGIN = 16;
+const MEDIA_WIDTH = SCREEN_WIDTH - MEDIA_MARGIN * 2;
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomHeader } from '@/components/ui/CustomHeader';
@@ -19,13 +21,14 @@ import { usePostStore } from '@/stores/postStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatDate, getFeelingEmoji } from '@/lib/utils';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
-import { useThemeColors } from '@/hooks/useThemeColors';
+import { useThemeColors, useIsDarkMode } from '@/hooks/useThemeColors';
 import { format } from 'date-fns';
 
 export default function PostDetailScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const styles = createStyles(colors);
+  const isDarkMode = useIsDarkMode();
+  const styles = createStyles(colors, isDarkMode);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, deletePost } = usePostStore();
@@ -148,7 +151,7 @@ export default function PostDetailScreen() {
               showsHorizontalScrollIndicator={false}
               style={{ flex: 1 }}
               onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                const index = Math.round(e.nativeEvent.contentOffset.x / MEDIA_WIDTH);
                 setActiveImageIndex(index);
               }}
             >
@@ -156,7 +159,7 @@ export default function PostDetailScreen() {
                 <Image
                   key={url + index}
                   source={{ uri: url }}
-                  style={[styles.media, { width: SCREEN_WIDTH }]}
+                  style={[styles.media, { width: MEDIA_WIDTH }]}
                   resizeMode="cover"
                 />
               ))}
@@ -228,10 +231,10 @@ export default function PostDetailScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: isDarkMode ? '#2a2420' : '#fefaf7',
   },
   scrollContent: {
     flex: 1,
@@ -247,8 +250,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   userInfo: {
     flexDirection: 'row',
@@ -279,6 +280,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   mediaContainer: {
     aspectRatio: 1,
+    marginHorizontal: MEDIA_MARGIN,
+    borderRadius: 10,
+    overflow: 'hidden',
     backgroundColor: colors.backgroundSecondary,
   },
   galleryDots: {
@@ -329,8 +333,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   text: {
     fontSize: fontSize.md,
+    fontFamily: 'serif',
     color: colors.text,
-    lineHeight: 24,
+    lineHeight: 26,
     marginBottom: spacing.lg,
   },
   feelingContainer: {

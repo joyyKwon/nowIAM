@@ -25,7 +25,7 @@ import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme'
 import { useThemeColors } from '@/hooks/useThemeColors';
 
 const { width } = Dimensions.get('window');
-const GRID_GAP = 2;
+const GRID_GAP = 6;
 const GRID_PADDING = spacing.xs;
 const itemSize = (width - GRID_PADDING * 2 - GRID_GAP * 2 * 3) / 3;
 
@@ -555,6 +555,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: itemSize,
     height: itemSize,
     margin: GRID_GAP,
+    borderRadius: 10,
     backgroundColor: colors.backgroundSecondary,
     overflow: 'hidden',
     position: 'relative',
@@ -592,6 +593,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   listImage: {
     width: 100,
     height: 100,
+    borderRadius: 10,
   },
   listContent: {
     flex: 1,
@@ -668,6 +670,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   calendarPostImage: {
     width: 60,
     height: 60,
+    borderRadius: 10,
   },
   calendarPostContent: {
     flex: 1,
