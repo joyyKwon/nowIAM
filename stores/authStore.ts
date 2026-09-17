@@ -28,6 +28,7 @@ interface AuthState {
   removePassword: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -438,5 +439,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile: null,
       isAuthenticated: false,
     });
+  },
+
+  deleteAccount: async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        method: 'POST',
+      });
+
+      if (error) {
+        return { success: false, error: '계정 삭제에 실패했습니다.' };
+      }
+      if (data?.error) {
+        return { success: false, error: data.error };
+      }
+
+      await supabase.auth.signOut();
+      set({
+        user: null,
+        profile: null,
+        isAuthenticated: false,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Delete account error:', error);
+      return { success: false, error: '계정 삭제 중 오류가 발생했습니다.' };
+    }
   },
 }));

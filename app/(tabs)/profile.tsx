@@ -42,7 +42,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const { profile, removePassword, signOut, updateProfile, refreshProfile } = useAuthStore();
+  const { profile, removePassword, signOut, updateProfile, refreshProfile, deleteAccount } = useAuthStore();
   const { posts, fetchPosts } = usePostStore();
   const {
     firstDay,
@@ -209,6 +209,28 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '회원 탈퇴',
+      '탈퇴하면 계정과 모든 게시물이 영구적으로 삭제되며 복구할 수 없습니다. 계속하시겠습니까?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '탈퇴',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteAccount();
+            if (!result.success) {
+              Alert.alert('오류', result.error || '계정 삭제에 실패했습니다.');
+              return;
+            }
+            router.replace('/(auth)/intro');
+          },
+        },
+      ]
+    );
   };
 
   const recordedDays = new Set(
@@ -412,6 +434,11 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
           <Text style={[styles.settingLabel, styles.logoutLabel]}>로그아웃</Text>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
+          <Text style={[styles.settingLabel, styles.logoutLabel]}>회원 탈퇴</Text>
+          <Ionicons name="trash-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
     </ScrollView>
