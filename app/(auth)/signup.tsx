@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
-import { isValidBirthDate } from '@/lib/utils';
+import { isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -87,7 +87,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (!isValidBirthDate(birth)) {
+    const normalizedBirth = normalizeBirthDate(birth);
+    if (!isValidBirthDate(normalizedBirth)) {
       Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
@@ -112,7 +113,7 @@ export default function SignUpScreen() {
 
       const result = await signUp(email, password, {
         name,
-        birth: birth || undefined,
+        birth: normalizedBirth,
         sex: sex || undefined,
         about: about || undefined,
         profileImage: uploadedImageUrl,
@@ -159,10 +160,12 @@ export default function SignUpScreen() {
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
               <View style={styles.imagePlaceholder}>
-                <Ionicons name="camera" size={32} color={colors.textSecondary} />
-                <Text style={styles.imageText}>프로필 사진</Text>
+                <Ionicons name="person" size={48} color={colors.textSecondary} />
               </View>
             )}
+            <View style={styles.imageOverlay}>
+              <Ionicons name="camera" size={16} color={colors.white} />
+            </View>
           </TouchableOpacity>
 
           {/* 필수 항목 */}
@@ -349,6 +352,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   imageContainer: {
     alignSelf: 'center',
     marginBottom: spacing.xl,
+    position: 'relative',
   },
   profileImage: {
     width: 100,
@@ -362,14 +366,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
   },
-  imageText: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
   },
   section: {
     marginBottom: spacing.xl,

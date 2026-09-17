@@ -20,7 +20,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { getOrCreateDeviceId } from '@/lib/auth';
 import { uploadFile } from '@/lib/storage';
-import { isValidBirthDate } from '@/lib/utils';
+import { isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -28,14 +28,29 @@ export default function CompleteProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const { user } = useAuthStore();
+  const { user, signOut, refreshProfile } = useAuthStore();
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(user?.user_metadata?.name || user?.user_metadata?.full_name || '');
   const [birth, setBirth] = useState('');
   const [sex, setSex] = useState<string>('');
   const [about, setAbout] = useState('');
-  const [profileImage, setProfileImage] = useState<string>('');
+  const [profileImage, setProfileImage] = useState<string>(
+    (user?.user_metadata?.avatar_url || '').replace(/^http:\/\//, 'https://')
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleImagePress = () => {
+    if (!profileImage) {
+      pickImage();
+      return;
+    }
+
+    Alert.alert('프로필 사진', undefined, [
+      { text: '사진 변경', onPress: pickImage },
+      { text: '기본 이미지로 변경', style: 'destructive', onPress: () => setProfileImage('') },
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -68,7 +83,8 @@ export default function CompleteProfileScreen() {
       return;
     }
 
-    if (!isValidBirthDate(birth)) {
+    const normalizedBirth = normalizeBirthDate(birth);
+    if (!isValidBirthDate(normalizedBirth)) {
       Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
       return;
     }
@@ -78,8 +94,11 @@ export default function CompleteProfileScreen() {
 
       let uploadedImageUrl: string | undefined;
 
-      // 프로필 이미지 업로드
-      if (profileImage) {
+      if (profileImage.startsWith('http://') || profileImage.startsWith('https://')) {
+        // 소셜 로그인에서 받아온 원격 프로필 사진(예: 카카오)은 그대로 사용
+        uploadedImageUrl = profileImage;
+      } else if (profileImage) {
+        // 직접 선택한 로컬 사진은 업로드
         const extension = profileImage.split('.').pop() || 'jpg';
         const fileName = `profile_${Date.now()}.${extension}`;
         const { url, error } = await uploadFile('profiles', fileName, profileImage, 'image/jpeg');
@@ -98,7 +117,7 @@ export default function CompleteProfileScreen() {
         device_id: deviceId,
         email: user.email,
         name,
-        birth: birth || null,
+        birth: normalizedBirth,
         sex: sex || null,
         about: about || null,
         profile_image: uploadedImageUrl || null,
@@ -114,7 +133,8 @@ export default function CompleteProfileScreen() {
         throw profileError;
       }
 
-      // 앱으로 이동
+      // 방금 만든 프로필을 스토어에 반영한 뒤 앱으로 이동
+      await refreshProfile();
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Complete profile error:', error);
@@ -122,6 +142,20 @@ export default function CompleteProfileScreen() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    Alert.alert('처음부터 다시 하기', '지금까지 입력한 내용이 사라지고 로그인 화면으로 돌아갑니다.', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '돌아가기',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/(auth)/intro');
+        },
+      },
+    ]);
   };
 
   return (
@@ -132,21 +166,26 @@ export default function CompleteProfileScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* 헤더 */}
+          <TouchableOpacity onPress={handleCancel} style={styles.backButton} hitSlop={8}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>프로필 설정</Text>
             <Text style={styles.headerSubtitle}>서비스 이용을 위해 프로필을 완성해주세요.</Text>
           </View>
 
           {/* 프로필 이미지 */}
-          <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
+          <TouchableOpacity style={styles.imageContainer} onPress={handleImagePress}>
             {profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
               <View style={styles.imagePlaceholder}>
-                <Ionicons name="camera" size={32} color={colors.textSecondary} />
-                <Text style={styles.imageText}>프로필 사진</Text>
+                <Ionicons name="person" size={48} color={colors.textSecondary} />
               </View>
             )}
+            <View style={styles.imageOverlay}>
+              <Ionicons name="camera" size={16} color={colors.white} />
+            </View>
           </TouchableOpacity>
 
           {/* 입력 폼 */}
@@ -239,6 +278,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xl,
     paddingBottom: spacing.xl * 2,
   },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
+  },
   header: {
     marginBottom: spacing.xl,
   },
@@ -255,6 +298,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   imageContainer: {
     alignSelf: 'center',
     marginBottom: spacing.xl,
+    position: 'relative',
   },
   profileImage: {
     width: 100,
@@ -268,14 +312,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
   },
-  imageText: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
   },
   form: {
     marginBottom: spacing.xl,

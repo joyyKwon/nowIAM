@@ -231,22 +231,23 @@ export default function HomeScreen() {
   };
 
   const renderContent = () => {
-    if (posts.length === 0 && !isLoading) {
-      return (
-        <ScrollView
-          contentContainerStyle={styles.emptyContainer}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-          }
-        >
-          <Text style={styles.emptyText}>아직 게시물이 없습니다</Text>
-          <Text style={styles.emptySubtext}>첫 게시물을 작성해보세요!</Text>
-        </ScrollView>
-      );
-    }
+    const isEmpty = posts.length === 0 && !isLoading;
 
     switch (viewMode) {
       case 'grid':
+        if (isEmpty) {
+          return (
+            <ScrollView
+              contentContainerStyle={styles.emptyContainer}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+              }
+            >
+              <Text style={styles.emptyText}>아직 게시물이 없습니다</Text>
+              <Text style={styles.emptySubtext}>첫 게시물을 작성해보세요!</Text>
+            </ScrollView>
+          );
+        }
         return (
           <FlatList
             key="grid"
@@ -261,6 +262,19 @@ export default function HomeScreen() {
           />
         );
       case 'list':
+        if (isEmpty) {
+          return (
+            <ScrollView
+              contentContainerStyle={styles.emptyContainer}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+              }
+            >
+              <Text style={styles.emptyText}>아직 게시물이 없습니다</Text>
+              <Text style={styles.emptySubtext}>첫 게시물을 작성해보세요!</Text>
+            </ScrollView>
+          );
+        }
         return (
           <FlatList
             key="list"

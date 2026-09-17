@@ -1,8 +1,11 @@
 import { supabase } from './supabase';
 import * as SecureStore from 'expo-secure-store';
 import { generateDeviceId } from './utils';
-import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+
+// makeRedirectUri()는 개발 클라이언트 환경에서 종종 localhost 루프백 주소로
+// 잡혀버려서 앱으로 돌아오지 않는 문제가 있어 고정 문자열로 명시
+const OAUTH_REDIRECT_URI = 'nowiam://auth/callback';
 
 const DEVICE_ID_KEY = 'nowiam_device_id';
 
@@ -150,16 +153,16 @@ export async function signInWithEmail(email: string, password: string) {
  */
 export async function signInWithOAuth(provider: AuthProvider) {
   try {
-    const redirectUri = makeRedirectUri({
-      scheme: 'nowiam',
-      path: 'auth/callback',
-    });
+    const redirectUri = OAUTH_REDIRECT_URI;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: provider as any,
       options: {
         redirectTo: redirectUri,
         skipBrowserRedirect: true,
+        // 카카오는 이메일(account_email) 항목이 비즈니스 인증된 앱만 요청 가능해서
+        // 개인 개발자 앱에서는 닉네임/프로필 사진만 요청 (Supabase에서 "이메일 없는 사용자 허용" 설정 필요)
+        ...(provider === 'kakao' ? { scopes: 'profile_nickname profile_image' } : {}),
       },
     });
 
@@ -169,9 +172,11 @@ export async function signInWithOAuth(provider: AuthProvider) {
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
       if (result.type === 'success' && result.url) {
-        const params = new URL(result.url).searchParams;
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
+        const resultUrl = new URL(result.url);
+        // Supabase는 토큰을 쿼리(?)가 아니라 해시(#) 프래그먼트로 돌려줌
+        const hashParams = new URLSearchParams(resultUrl.hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token') || resultUrl.searchParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || resultUrl.searchParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
@@ -201,10 +206,7 @@ export async function signInWithOAuth(provider: AuthProvider) {
 export async function resetPassword(email: string) {
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: makeRedirectUri({
-        scheme: 'nowiam',
-        path: 'auth/reset-password',
-      }),
+      redirectTo: 'nowiam://auth/reset-password',
     });
 
     if (error) throw error;

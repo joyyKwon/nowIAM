@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { isValidBirthDate } from '@/lib/utils';
+import { isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
 import { uploadFile, generateFileName } from '@/lib/storage';
 import { requestNotificationPermission, refreshReminderSchedule } from '@/lib/notifications';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
@@ -153,15 +153,20 @@ export default function ProfileScreen() {
     const field = editingField;
     if (!field) return;
 
-    if (field === 'birth' && draftValue && !isValidBirthDate(draftValue)) {
-      Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
-      return;
+    let valueToSave = draftValue;
+
+    if (field === 'birth' && draftValue) {
+      valueToSave = normalizeBirthDate(draftValue);
+      if (!isValidBirthDate(valueToSave)) {
+        Alert.alert('알림', '생년월일 형식이 올바르지 않습니다. (예: 2000-01-01)');
+        return;
+      }
     }
 
     setEditingField(null);
 
     try {
-      await updateProfile({ [field]: draftValue });
+      await updateProfile({ [field]: valueToSave });
     } catch (error) {
       console.error('Update profile error:', error);
       Alert.alert('오류', '수정 중 오류가 발생했습니다.');

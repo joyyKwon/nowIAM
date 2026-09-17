@@ -67,6 +67,17 @@ export function validateKeywords(keywords: string[]): boolean {
 }
 
 /**
+ * 생년월일 입력값을 YYYY-MM-DD로 정규화 (숫자 8자리면 구분자 없이 입력해도 허용)
+ */
+export function normalizeBirthDate(value: string): string {
+  const digits = value.replace(/[^0-9]/g, '');
+  if (digits.length === 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  }
+  return value;
+}
+
+/**
  * 생년월일(YYYY-MM-DD) 유효성 검사 - 형식, 실존 날짜, 미래 날짜 여부 확인
  */
 export function isValidBirthDate(value: string): boolean {

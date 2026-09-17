@@ -63,7 +63,7 @@ export default function LoginScreen() {
       const result = await signInWithProvider(provider);
 
       if (!result.success) {
-        Alert.alert('오류', result.error || '소셜 로그인에 실패했습니다.');
+        console.warn('소셜 로그인 실패:', result.error);
         return;
       }
 
