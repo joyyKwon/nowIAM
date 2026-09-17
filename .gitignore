@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# OAuth client secret files (kept locally for reference, never committed)
+client_secret_*.json
