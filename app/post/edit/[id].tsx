@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,28 +8,41 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  Switch,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  PanResponder,
+  Switch,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '@/components/ui/Button';
-import { CustomHeader } from '@/components/ui/CustomHeader';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useAuthStore } from '@/stores/authStore';
 import { usePostStore } from '@/stores/postStore';
 import { uploadFile, generateFileName } from '@/lib/storage';
-import { getMediaType, validateKeywords } from '@/lib/utils';
+import { getMediaType, validateKeywords, formatDate, getFeelingEmoji } from '@/lib/utils';
 import { MAX_POST_IMAGES, MAX_POST_KEYWORDS } from '@/types/models';
 import { spacing, fontSize, borderRadius, ThemeColors } from '@/constants/theme';
-import { useThemeColors } from '@/hooks/useThemeColors';
+import { useThemeColors, useIsDarkMode } from '@/hooks/useThemeColors';
+
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
+// 캘린더 무드 히트맵과 동일한 골드/앰버 계열
+const MOOD_GRADIENT: [string, string] = ['#E9BF7A', '#FAB52D'];
 
 export default function EditPostScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const styles = createStyles(colors);
+  const isDarkMode = useIsDarkMode();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(colors, isDarkMode);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuthStore();
   const { currentPost, fetchPostById, updatePost } = usePostStore();
@@ -40,11 +53,33 @@ export default function EditPostScreen() {
   const [content, setContent] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
+  const [isAddingKeyword, setIsAddingKeyword] = useState(false);
   const [feeling, setFeeling] = useState(5);
   const [location, setLocation] = useState('');
+  const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const moodTrackRef = useRef<View>(null);
+  const moodTrackLayout = useRef({ pageX: 0, width: 0 });
+
+  const updateFeelingFromPageX = (pageX: number) => {
+    const { pageX: trackX, width } = moodTrackLayout.current;
+    if (width <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (pageX - trackX) / width));
+    setFeeling(Math.round(ratio * 10));
+  };
+
+  const moodPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => updateFeelingFromPageX(evt.nativeEvent.pageX),
+      onPanResponderMove: (evt) => updateFeelingFromPageX(evt.nativeEvent.pageX),
+    })
+  ).current;
 
   useEffect(() => {
     if (id) {
@@ -78,6 +113,13 @@ export default function EditPostScreen() {
       setKeywords(currentPost.keywords || []);
       setFeeling(currentPost.feeling ?? 5);
       setLocation(currentPost.location || '');
+      if (currentPost.location && currentPost.latitude != null && currentPost.longitude != null) {
+        setLocationData({
+          latitude: currentPost.latitude,
+          longitude: currentPost.longitude,
+          address: currentPost.location,
+        });
+      }
       setIsPublic(currentPost.isPublic ?? true);
     }
   }, [currentPost]);
@@ -160,15 +202,28 @@ export default function EditPostScreen() {
     setImageUris(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handlePickMedia = () => {
+    Alert.alert('미디어 추가', undefined, [
+      { text: '사진 촬영', onPress: takePhoto },
+      { text: '앨범 선택', onPress: pickImage },
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
+
   const addKeyword = () => {
-    if (newKeyword.trim() === '') return;
+    if (newKeyword.trim() === '') {
+      setIsAddingKeyword(false);
+      return;
+    }
     if (keywords.length >= MAX_POST_KEYWORDS) {
       Alert.alert('알림', `태그는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
+      setIsAddingKeyword(false);
       return;
     }
 
     setKeywords([...keywords, newKeyword.trim()]);
     setNewKeyword('');
+    setIsAddingKeyword(false);
   };
 
   const removeKeyword = (index: number) => {
@@ -260,7 +315,6 @@ export default function EditPostScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <CustomHeader title="게시물 수정" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>게시물 불러오는 중...</Text>
@@ -270,96 +324,132 @@ export default function EditPostScreen() {
   }
 
   const hasMedia = mediaType === 'video' ? !!videoUri : imageUris.length > 0;
+  const canSubmit = hasMedia && !isSubmitting;
 
   return (
     <View style={styles.container}>
-      <CustomHeader
-        title="게시물 수정"
-        headerLeft={
-          <TouchableOpacity onPress={() => router.back()}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.headerSide}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
             <Text style={styles.headerCancelText}>취소</Text>
           </TouchableOpacity>
-        }
-        headerRight={
+        </View>
+        <Text style={styles.headerDateText}>
+          {currentPost ? formatDate(currentPost.createdAt, 'short') : ''}
+        </Text>
+        <View style={[styles.headerSide, styles.headerSideRight]}>
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={!hasMedia || isSubmitting}
-            style={{ opacity: !hasMedia || isSubmitting ? 0.5 : 1 }}
+            disabled={!canSubmit}
+            style={[styles.headerSubmitButton, !canSubmit && styles.headerSubmitButtonDisabled]}
           >
-            <Text style={styles.headerSubmitText}>완료</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={styles.headerSubmitText}>완료</Text>
+            )}
           </TouchableOpacity>
-        }
-      />
+        </View>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView>
-          <View style={styles.content}>
-            {/* 이미지/동영상 선택 */}
-        <View style={styles.mediaContainer}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+          {/* 미디어 */}
           {mediaType === 'video' && videoUri ? (
-            <View style={styles.mediaPreview}>
-              <Image source={{ uri: videoUri }} style={styles.media} />
+            <View style={styles.heroContainer}>
+              <Image source={{ uri: videoUri }} style={styles.hero} />
               <View style={styles.videoBadge}>
-                <Ionicons name="play-circle" size={20} color={colors.background} />
+                <Ionicons name="play-circle" size={20} color={colors.white} />
               </View>
               <TouchableOpacity style={styles.changeMediaButton} onPress={pickImage}>
-                <Ionicons name="images" size={24} color={colors.background} />
+                <Ionicons name="images" size={18} color={colors.white} />
               </TouchableOpacity>
             </View>
           ) : imageUris.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageStrip}>
-              {imageUris.map((uri, index) => (
-                <View key={uri + index} style={styles.imageThumbWrapper}>
-                  <Image source={{ uri }} style={styles.imageThumb} />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => removeImage(index)}
-                  >
-                    <Ionicons name="close-circle" size={20} color={colors.background} />
+            <>
+              <View style={styles.heroContainer}>
+                <Image source={{ uri: imageUris[0] }} style={styles.hero} />
+                {imageUris.length > 1 && (
+                  <View style={styles.heroCountBadge}>
+                    <Text style={styles.heroCountText}>1/{imageUris.length}</Text>
+                  </View>
+                )}
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.thumbStrip}
+                contentContainerStyle={styles.thumbStripContent}
+              >
+                {imageUris.map((uri, index) => (
+                  <View key={uri + index} style={styles.thumbWrapper}>
+                    <Image
+                      source={{ uri }}
+                      style={[styles.thumb, index === 0 && styles.thumbActive]}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeThumbButton}
+                      onPress={() => removeImage(index)}
+                      hitSlop={4}
+                    >
+                      <Ionicons name="close" size={11} color={colors.white} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {imageUris.length < MAX_POST_IMAGES && (
+                  <TouchableOpacity style={styles.addThumb} onPress={pickImage}>
+                    <Ionicons name="add" size={22} color={colors.textSecondary} />
                   </TouchableOpacity>
-                </View>
-              ))}
-              {imageUris.length < MAX_POST_IMAGES && (
-                <TouchableOpacity style={styles.addImageThumb} onPress={pickImage}>
-                  <Ionicons name="add" size={32} color={colors.primary} />
-                </TouchableOpacity>
-              )}
-            </ScrollView>
+                )}
+              </ScrollView>
+            </>
           ) : (
-            <View style={styles.mediaButtons}>
-              <TouchableOpacity style={styles.mediaButton} onPress={takePhoto}>
-                <Ionicons name="camera" size={48} color={colors.primary} />
-                <Text style={styles.mediaButtonText}>사진 촬영</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
-                <Ionicons name="images" size={48} color={colors.primary} />
-                <Text style={styles.mediaButtonText}>앨범 선택</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.mediaEmpty} onPress={handlePickMedia} activeOpacity={0.8}>
+              <View style={styles.mediaEmptyButton}>
+                <Ionicons name="add" size={26} color={colors.textSecondary} />
+              </View>
+              <Text style={styles.mediaEmptyPrompt}>오늘의 순간을 담아보세요</Text>
+            </TouchableOpacity>
           )}
-          {mediaType === 'image' && imageUris.length > 0 && (
-            <Text style={styles.imageCountText}>{imageUris.length}/{MAX_POST_IMAGES}장</Text>
-          )}
-        </View>
 
-        {/* 내용 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>내용</Text>
+          {/* 본문 */}
           <TextInput
             style={styles.textArea}
-            placeholder="내용을 입력하세요"
+            placeholder="오늘 하루는 어땠나요?"
+            placeholderTextColor={colors.textSecondary}
             value={content}
             onChangeText={setContent}
             multiline
-            numberOfLines={4}
           />
-        </View>
 
-        {/* 태그 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>태그 (최대 {MAX_POST_KEYWORDS}개)</Text>
+          {/* 기분 */}
+          <View style={styles.moodRow}>
+            <Text style={styles.moodEmojiEdge}>{getFeelingEmoji(0)}</Text>
+            <View
+              ref={moodTrackRef}
+              style={styles.moodTrackWrapper}
+              onLayout={() => {
+                moodTrackRef.current?.measure((x, y, width, height, pageX) => {
+                  moodTrackLayout.current = { pageX, width };
+                });
+              }}
+              {...moodPanResponder.panHandlers}
+            >
+              <LinearGradient
+                colors={MOOD_GRADIENT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.moodTrack}
+              />
+              <View style={[styles.moodThumb, { left: `${(feeling / 10) * 100}%` }]} />
+            </View>
+            <Text style={styles.moodEmojiEdge}>{getFeelingEmoji(10)}</Text>
+          </View>
+
+          {/* 태그 */}
           <View style={styles.keywordsContainer}>
             {keywords.map((keyword, index) => (
               <TouchableOpacity
@@ -368,276 +458,358 @@ export default function EditPostScreen() {
                 onPress={() => removeKeyword(index)}
               >
                 <Text style={styles.keywordText}>#{keyword}</Text>
-                <Ionicons name="close-circle" size={16} color={colors.background} />
+                <Ionicons name="close" size={12} color={colors.textSecondary} />
               </TouchableOpacity>
             ))}
+            {keywords.length < MAX_POST_KEYWORDS && (
+              isAddingKeyword ? (
+                <TextInput
+                  style={styles.keywordInput}
+                  placeholder="태그"
+                  placeholderTextColor={colors.textSecondary}
+                  value={newKeyword}
+                  onChangeText={setNewKeyword}
+                  onSubmitEditing={addKeyword}
+                  onBlur={addKeyword}
+                  maxLength={20}
+                  autoFocus
+                  returnKeyType="done"
+                />
+              ) : (
+                <TouchableOpacity style={styles.addKeywordChip} onPress={() => setIsAddingKeyword(true)}>
+                  <Text style={styles.addKeywordText}>+ 태그</Text>
+                </TouchableOpacity>
+              )
+            )}
           </View>
-          {keywords.length < MAX_POST_KEYWORDS && (
-            <View style={styles.keywordInputContainer}>
-              <TextInput
-                style={styles.keywordInput}
-                placeholder="태그 입력"
-                value={newKeyword}
-                onChangeText={setNewKeyword}
-                onSubmitEditing={addKeyword}
-                maxLength={20}
+
+          {/* 위치 / 공개 여부 */}
+          <View style={styles.toolbar}>
+            <TouchableOpacity
+              style={styles.toolbarRow}
+              onPress={() => setShowLocationPicker(true)}
+            >
+              <Ionicons
+                name={location ? 'location' : 'location-outline'}
+                size={17}
+                color={location ? colors.primary : colors.textSecondary}
               />
-              <Button title="추가" onPress={addKeyword} size="sm" />
+              <Text
+                style={[styles.toolbarRowText, location && styles.toolbarTextActive]}
+                numberOfLines={1}
+              >
+                {location || '위치 추가'}
+              </Text>
+              {location ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setLocation('');
+                    setLocationData(null);
+                  }}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+
+            <View style={[styles.toolbarRow, styles.toolbarRowLast]}>
+              <Ionicons
+                name={isPublic ? 'globe-outline' : 'lock-closed-outline'}
+                size={17}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.toolbarRowText}>{isPublic ? '공개' : '비공개'}</Text>
+              <Switch
+                value={isPublic}
+                onValueChange={setIsPublic}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
             </View>
-          )}
-        </View>
-
-        {/* 기분 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>기분 ({feeling}/10)</Text>
-          <View style={styles.sliderContainer}>
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-              <TouchableOpacity
-                key={value}
-                style={[
-                  styles.sliderDot,
-                  feeling === value && styles.sliderDotActive,
-                ]}
-                onPress={() => setFeeling(value)}
-              />
-            ))}
           </View>
-        </View>
 
-        {/* 위치 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>위치</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="위치를 입력하세요"
-            value={location}
-            onChangeText={setLocation}
+          <LocationPicker
+            visible={showLocationPicker}
+            onClose={() => setShowLocationPicker(false)}
+            onSelectLocation={(data) => {
+              setLocationData(data);
+              setLocation(data.address);
+            }}
+            initialLocation={locationData || undefined}
           />
-        </View>
-
-        {/* 공개 여부 */}
-        <View style={styles.section}>
-          <View style={styles.switchRow}>
-            <Text style={styles.label}>공개</Text>
-            <Switch
-              value={isPublic}
-              onValueChange={setIsPublic}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-        </View>
-
-        {/* 제출 버튼 */}
-        <Button
-          title="수정 완료"
-          onPress={handleSubmit}
-          size="lg"
-          fullWidth
-          loading={isSubmitting}
-          disabled={!hasMedia || isSubmitting}
-        />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: isDarkMode ? '#2a2420' : '#fefaf7',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: spacing.md,
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-  content: {
-    padding: spacing.xl,
-  },
-  mediaContainer: {
-    marginBottom: spacing.xl,
-  },
-  mediaPreview: {
-    position: 'relative',
-    aspectRatio: 1,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-  },
-  media: {
-    width: '100%',
-    height: '100%',
-  },
-  changeMediaButton: {
-    position: 'absolute',
-    bottom: spacing.md,
-    right: spacing.md,
-    backgroundColor: colors.primary,
-    padding: spacing.sm,
-    borderRadius: borderRadius.full,
-  },
-  videoBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: borderRadius.full,
-    padding: 2,
-  },
-  imageStrip: {
+  header: {
     flexDirection: 'row',
-  },
-  imageThumbWrapper: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-    marginRight: spacing.sm,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.backgroundSecondary,
-  },
-  imageThumb: {
-    width: '100%',
-    height: '100%',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: borderRadius.full,
-  },
-  addImageThumb: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
-  imageCountText: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    textAlign: 'right',
-  },
-  mediaButtons: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  mediaButton: {
+  headerSide: {
     flex: 1,
-    aspectRatio: 1,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    alignItems: 'flex-start',
   },
-  mediaButtonText: {
-    marginTop: spacing.sm,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  label: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.text,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  keywordsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  keywordChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-  },
-  keywordText: {
-    fontSize: fontSize.sm,
-    color: colors.background,
-    fontWeight: '600',
-  },
-  keywordInputContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  keywordInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
-  sliderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  sliderDot: {
-    width: 24,
-    height: 24,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.border,
-  },
-  sliderDotActive: {
-    backgroundColor: colors.primary,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  headerSideRight: {
+    alignItems: 'flex-end',
   },
   headerCancelText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-  headerSubmitText: {
+  headerDateText: {
     fontSize: fontSize.md,
-    color: colors.primary,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  headerSubmitButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    minWidth: 56,
+    alignItems: 'center',
+  },
+  headerSubmitButtonDisabled: {
+    opacity: 0.4,
+  },
+  headerSubmitText: {
+    fontSize: fontSize.sm,
+    color: colors.white,
     fontWeight: '600',
+  },
+  heroContainer: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: isDarkMode ? '#352b22' : '#f5ebe0',
+    position: 'relative',
+  },
+  hero: {
+    width: '100%',
+    height: '100%',
+  },
+  heroCountBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
+  heroCountText: {
+    fontSize: fontSize.xs,
+    color: colors.white,
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: borderRadius.full,
+    padding: 2,
+  },
+  changeMediaButton: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    padding: spacing.sm,
+    borderRadius: borderRadius.full,
+  },
+  thumbStrip: {
+    marginTop: spacing.sm,
+  },
+  thumbStripContent: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
+  thumbWrapper: {
+    position: 'relative',
+    width: 44,
+    height: 44,
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    opacity: 0.55,
+  },
+  thumbActive: {
+    opacity: 1,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  removeThumbButton: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaEmpty: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    aspectRatio: 1,
+    borderRadius: 14,
+    backgroundColor: isDarkMode ? '#352b22' : '#f5ebe0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  mediaEmptyButton: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.full,
+    backgroundColor: isDarkMode ? '#2a2420' : '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaEmptyPrompt: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  textArea: {
+    padding: spacing.lg,
+    fontSize: fontSize.md,
+    fontFamily: 'serif',
+    lineHeight: 24,
+    color: colors.text,
+    minHeight: 160,
+    textAlignVertical: 'top',
+  },
+  moodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  moodEmojiEdge: {
+    fontSize: fontSize.md,
+  },
+  moodTrackWrapper: {
+    flex: 1,
+    height: 32,
+    justifyContent: 'center',
+  },
+  moodTrack: {
+    height: 5,
+    borderRadius: 3,
+  },
+  moodThumb: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: '#FAB52D',
+    marginLeft: -9,
+  },
+  keywordsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  keywordChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? '#352b22' : '#f5ebe0',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  keywordText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  addKeywordChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  addKeywordText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  keywordInput: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    fontSize: fontSize.xs,
+    color: colors.text,
+    minWidth: 80,
+  },
+  toolbar: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.border,
+  },
+  toolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.border,
+  },
+  toolbarRowLast: {
+    borderBottomWidth: 0,
+  },
+  toolbarRowText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  toolbarTextActive: {
+    color: colors.text,
   },
 });
