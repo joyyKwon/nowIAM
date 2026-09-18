@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   FlatList,
   Image,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,183 +19,216 @@ import { getPostThumbnail } from '@/lib/utils';
 import { fontSize, spacing, borderRadius, ThemeColors } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
+const { width } = Dimensions.get('window');
+const GRID_GAP = 6;
+const GRID_PADDING = spacing.xs;
+const itemSize = (width - GRID_PADDING * 2 - GRID_GAP * 2 * 3) / 3;
+const MAX_RECENT_SEARCHES = 8;
+
 export default function SearchScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const { profile } = useAuthStore();
-  const { searchPosts } = usePostStore();
+  const { posts, searchPosts, popularTags, fetchPopularTags } = usePostStore();
+  const inputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  // 탭 전환 시 초기화
+  // 탭 전환 시 검색 상태 초기화 (최근 검색어는 세션 동안 유지)
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // 화면을 벗어날 때 초기화
         setSearchQuery('');
         setSearchResults([]);
-        setSuggestions([]);
-        setShowSuggestions(false);
         setHasSearched(false);
       };
     }, [])
   );
 
-  // 실시간 검색 (debounce 적용)
+  // 전체 유저의 인기 태그 (공개 게시물 기준) 자동완성 후보로 한 번 불러오기
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    fetchPopularTags();
+  }, []);
 
-    if (searchQuery.trim().length === 0) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
+  // 내 게시물에 달린 모든 태그 (자동완성 후보)
+  const allTags = useMemo(
+    () => Array.from(new Set(posts.flatMap((p) => p.keywords || []))),
+    [posts]
+  );
 
-    debounceRef.current = setTimeout(async () => {
-      if (profile && searchQuery.trim()) {
-        const results = await searchPosts(profile.id, searchQuery.trim());
-        setSuggestions(results.slice(0, 5)); // 최대 5개만 표시
-        setShowSuggestions(true);
-      }
-    }, 300); // 300ms 딜레이
+  // 입력한 문자로 "시작하는" 단어만 자동완성으로 제공 (포털 검색어 자동완성 방식)
+  // 내가 실제로 쓴 태그를 먼저 보여주고, 전체 유저 인기 태그로 채움
+  const suggestionWords = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
 
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [searchQuery, profile]);
+    const ownMatches = allTags
+      .filter((tag) => tag.toLowerCase().startsWith(query))
+      .map((word) => ({ word, isOwn: true }));
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || !profile) return;
+    const ownSet = new Set(allTags);
+    const popularMatches = popularTags
+      .filter((word) => !ownSet.has(word) && word.toLowerCase().startsWith(query))
+      .map((word) => ({ word, isOwn: false }));
 
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    return [...ownMatches, ...popularMatches].slice(0, 8);
+  }, [allTags, popularTags, searchQuery]);
+
+  const showSuggestions = isFocused && suggestionWords.length > 0;
+
+  const runSearch = async (query: string) => {
+    if (!query.trim() || !profile) return;
 
     Keyboard.dismiss();
-    setShowSuggestions(false);
+    setIsFocused(false);
     setIsSearching(true);
     setHasSearched(true);
 
-    const results = await searchPosts(profile.id, searchQuery.trim());
+    const results = await searchPosts(profile.id, query.trim());
     setSearchResults(results);
     setIsSearching(false);
+
+    const trimmed = query.trim();
+    setRecentSearches(prev => [trimmed, ...prev.filter(q => q !== trimmed)].slice(0, MAX_RECENT_SEARCHES));
   };
 
-  const handleSelectSuggestion = (item: any) => {
-    setShowSuggestions(false);
-    Keyboard.dismiss();
-    router.push(`/post/${item.id}`);
+  const handleSearch = () => runSearch(searchQuery);
+
+  const handleSelectRecent = (query: string) => {
+    setSearchQuery(query);
+    runSearch(query);
+  };
+
+  const handleRemoveRecent = (query: string) => {
+    setRecentSearches(prev => prev.filter(q => q !== query));
+  };
+
+  const handleCancel = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+    setIsFocused(false);
+    inputRef.current?.blur();
+  };
+
+  const handleSelectSuggestionWord = (word: string) => {
+    setSearchQuery(word);
+    runSearch(word);
   };
 
   const renderResultItem = ({ item }: any) => (
     <TouchableOpacity
-      style={styles.resultItem}
+      style={styles.gridItem}
       onPress={() => router.push(`/post/${item.id}`)}
     >
       <Image
         source={{ uri: getPostThumbnail(item) }}
-        style={styles.resultImage}
+        style={styles.gridImage}
         resizeMode="cover"
       />
-      <View style={styles.resultContent}>
-        {item.keywords && item.keywords.length > 0 && (
-          <Text style={styles.resultKeywords}>
-            {item.keywords.map((k: string) => `#${k}`).join(' ')}
-          </Text>
-        )}
-        {item.content && (
-          <Text style={styles.resultText} numberOfLines={2}>
-            {item.content}
-          </Text>
-        )}
-        <Text style={styles.resultDate}>
-          {new Date(item.createdAt).toLocaleDateString('ko-KR')}
-        </Text>
-      </View>
+      {item.mediaType === 'video' && (
+        <View style={styles.videoOverlay}>
+          <Ionicons name="play-circle" size={28} color="white" />
+        </View>
+      )}
     </TouchableOpacity>
   );
+
+  const showCancelButton = isFocused || searchQuery.length > 0;
 
   return (
     <View style={styles.container}>
       {/* 검색 입력창 */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputWrapper}>
-          <Ionicons name="search" size={20} color={colors.textSecondary} />
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
+            ref={inputRef}
             style={styles.searchInput}
-            placeholder="키워드 또는 내용 검색"
+            placeholder="태그 또는 내용 검색"
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
-            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => {
-              setSearchQuery('');
-              setSuggestions([]);
-              setShowSuggestions(false);
-            }}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>검색</Text>
-        </TouchableOpacity>
+        {showCancelButton && (
+          <TouchableOpacity onPress={handleCancel} hitSlop={8}>
+            <Text style={styles.cancelText}>취소</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* 자동완성 드롭다운 */}
-      {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
-          {suggestions.map((item) => (
+      {/* 자동완성 (포털 검색처럼 단어만 제공) */}
+      {showSuggestions && (
+        <View style={styles.suggestionsCard}>
+          {suggestionWords.map(({ word, isOwn }, index) => (
             <TouchableOpacity
-              key={item.id}
-              style={styles.suggestionItem}
-              onPress={() => handleSelectSuggestion(item)}
+              key={word}
+              style={[
+                styles.suggestionItem,
+                index === suggestionWords.length - 1 && styles.suggestionItemLast,
+              ]}
+              onPress={() => handleSelectSuggestionWord(word)}
             >
-              <Image
-                source={{ uri: getPostThumbnail(item) }}
-                style={styles.suggestionImage}
-                resizeMode="cover"
-              />
-              <View style={styles.suggestionContent}>
-                {item.keywords && item.keywords.length > 0 && (
-                  <Text style={styles.suggestionKeywords} numberOfLines={1}>
-                    {item.keywords.map((k: string) => `#${k}`).join(' ')}
-                  </Text>
-                )}
-                {item.content && (
-                  <Text style={styles.suggestionText} numberOfLines={1}>
-                    {item.content}
-                  </Text>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              <Ionicons name="search" size={15} color={colors.textSecondary} />
+              <Text style={styles.suggestionWordText} numberOfLines={1}>
+                <Text style={styles.suggestionWordMatch}>
+                  {word.slice(0, searchQuery.trim().length)}
+                </Text>
+                {word.slice(searchQuery.trim().length)}
+              </Text>
+              {!isOwn && (
+                <View style={styles.suggestionBadge}>
+                  <Text style={styles.suggestionBadgeText}>인기</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* 검색 결과 */}
-      {!hasSearched ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="search-outline" size={64} color={colors.border} />
-          <Text style={styles.emptyText}>검색어를 입력하세요</Text>
-          <Text style={styles.emptySubtext}>
-            키워드(레이블) 또는 내용으로 검색할 수 있습니다
-          </Text>
+      {/* 검색 전 / 결과 없음 / 결과 그리드 */}
+      {showSuggestions ? null : !hasSearched ? (
+        <View style={styles.beforeSearchContainer}>
+          {recentSearches.length > 0 && (
+            <View style={styles.recentSection}>
+              <View style={styles.recentHeader}>
+                <Text style={styles.recentTitle}>최근 검색</Text>
+                <TouchableOpacity onPress={() => setRecentSearches([])} hitSlop={8}>
+                  <Text style={styles.recentClearAll}>전체 삭제</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.recentChips}>
+                {recentSearches.map((query) => (
+                  <TouchableOpacity
+                    key={query}
+                    style={styles.recentChip}
+                    onPress={() => handleSelectRecent(query)}
+                  >
+                    <Text style={styles.recentChipText}>{query}</Text>
+                    <TouchableOpacity onPress={() => handleRemoveRecent(query)} hitSlop={8}>
+                      <Ionicons name="close" size={13} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+          <Text style={styles.beforeSearchPrompt}>태그나 내용으로 기록을 찾아보세요</Text>
         </View>
       ) : isSearching ? (
         <View style={styles.emptyContainer}>
@@ -202,19 +236,23 @@ export default function SearchScreen() {
         </View>
       ) : searchResults.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color={colors.border} />
+          <Ionicons name="document-text-outline" size={40} color={colors.border} />
           <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
           <Text style={styles.emptySubtext}>
             다른 검색어로 시도해보세요
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderResultItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.resultsList}
-        />
+        <>
+          <Text style={styles.resultCountText}>결과 {searchResults.length}개</Text>
+          <FlatList
+            data={searchResults}
+            renderItem={renderResultItem}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            contentContainerStyle={styles.resultsGrid}
+          />
+        </>
       )}
     </View>
   );
@@ -227,73 +265,120 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: spacing.md,
     gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   searchInputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    height: 40,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
     height: '100%',
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     color: colors.text,
   },
-  searchButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.lg,
-    justifyContent: 'center',
+  cancelText: {
+    fontSize: fontSize.sm,
+    color: colors.text,
   },
-  searchButtonText: {
-    color: colors.background,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-  suggestionsContainer: {
+  suggestionsCard: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    borderRadius: 14,
     backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    borderBottomWidth: 1,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 0.5,
     borderBottomColor: colors.border,
   },
-  suggestionImage: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.sm,
+  suggestionItemLast: {
+    borderBottomWidth: 0,
   },
-  suggestionContent: {
+  suggestionWordText: {
     flex: 1,
-    marginLeft: spacing.md,
-  },
-  suggestionKeywords: {
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: colors.textSecondary,
+  },
+  suggestionWordMatch: {
+    color: colors.text,
     fontWeight: '600',
   },
-  suggestionText: {
+  suggestionBadge: {
+    backgroundColor: colors.backgroundSecondary,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+  },
+  suggestionBadgeText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  beforeSearchContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+  },
+  recentSection: {
+    marginBottom: spacing.xl,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  recentTitle: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  recentClearAll: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  recentChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  recentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+  },
+  recentChipText: {
     fontSize: fontSize.sm,
     color: colors.text,
-    marginTop: 2,
+  },
+  beforeSearchPrompt: {
+    fontSize: fontSize.sm,
+    color: colors.border,
+    textAlign: 'center',
+    marginTop: spacing.xl,
   },
   emptyContainer: {
     flex: 1,
@@ -302,7 +387,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xl,
   },
   emptyText: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     color: colors.textSecondary,
     marginTop: spacing.md,
   },
@@ -312,38 +397,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xs,
     textAlign: 'center',
   },
-  resultsList: {
-    padding: spacing.md,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-  },
-  resultImage: {
-    width: 80,
-    height: 80,
-  },
-  resultContent: {
-    flex: 1,
-    padding: spacing.md,
-    justifyContent: 'center',
-  },
-  resultKeywords: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  resultText: {
-    fontSize: fontSize.sm,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  resultDate: {
+  resultCountText: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+    paddingHorizontal: spacing.md + GRID_PADDING,
+    paddingTop: spacing.sm,
+  },
+  resultsGrid: {
+    padding: GRID_PADDING,
+  },
+  gridItem: {
+    width: itemSize,
+    height: itemSize,
+    margin: GRID_GAP,
+    borderRadius: 10,
+    backgroundColor: colors.backgroundSecondary,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });

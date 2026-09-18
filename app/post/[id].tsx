@@ -183,7 +183,7 @@ export default function PostDetailScreen() {
 
       {/* 내용 */}
       <View style={styles.content}>
-        {/* 키워드 */}
+        {/* 태그 */}
         {currentPost.keywords && currentPost.keywords.length > 0 && (
           <View style={styles.keywordsContainer}>
             <Text style={styles.keywords}>

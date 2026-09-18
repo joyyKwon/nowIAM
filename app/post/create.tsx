@@ -171,7 +171,7 @@ export default function CreatePostScreen() {
       return;
     }
     if (keywords.length >= MAX_POST_KEYWORDS) {
-      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
+      Alert.alert('알림', `태그는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
       setIsAddingKeyword(false);
       return;
     }
@@ -199,7 +199,7 @@ export default function CreatePostScreen() {
     }
 
     if (keywords.length > 0 && !validateKeywords(keywords)) {
-      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개, 각 20자 이하로 입력해주세요.`);
+      Alert.alert('알림', `태그는 최대 ${MAX_POST_KEYWORDS}개, 각 20자 이하로 입력해주세요.`);
       return;
     }
 
@@ -386,7 +386,7 @@ export default function CreatePostScreen() {
             <Text style={styles.moodEmojiEdge}>{getFeelingEmoji(10)}</Text>
           </View>
 
-          {/* 키워드 */}
+          {/* 태그 */}
           <View style={styles.keywordsContainer}>
             {keywords.map((keyword, index) => (
               <TouchableOpacity
@@ -402,7 +402,7 @@ export default function CreatePostScreen() {
               isAddingKeyword ? (
                 <TextInput
                   style={styles.keywordInput}
-                  placeholder="키워드"
+                  placeholder="태그"
                   placeholderTextColor={colors.textSecondary}
                   value={newKeyword}
                   onChangeText={setNewKeyword}
@@ -414,7 +414,7 @@ export default function CreatePostScreen() {
                 />
               ) : (
                 <TouchableOpacity style={styles.addKeywordChip} onPress={() => setIsAddingKeyword(true)}>
-                  <Text style={styles.addKeywordText}>+ 키워드</Text>
+                  <Text style={styles.addKeywordText}>+ 태그</Text>
                 </TouchableOpacity>
               )
             )}

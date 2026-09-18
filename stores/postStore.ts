@@ -34,6 +34,7 @@ interface PostState {
   posts: Post[];
   isLoading: boolean;
   currentPost: Post | null;
+  popularTags: string[];
 
   // Actions
   fetchPosts: (userId: string, sortOrder?: 'asc' | 'desc') => Promise<void>;
@@ -43,6 +44,7 @@ interface PostState {
   deletePost: (postId: string) => Promise<void>;
   searchPosts: (userId: string, keyword: string) => Promise<Post[]>;
   getPostsByDate: (userId: string, year: number, month: number, day: number) => Promise<Post[]>;
+  fetchPopularTags: () => Promise<void>;
   setCurrentPost: (post: Post | null) => void;
 }
 
@@ -50,6 +52,7 @@ export const usePostStore = create<PostState>((set, get) => ({
   posts: [],
   isLoading: false,
   currentPost: null,
+  popularTags: [],
 
   fetchPosts: async (userId: string, sortOrder: 'asc' | 'desc' = 'desc') => {
     try {
@@ -250,6 +253,16 @@ export const usePostStore = create<PostState>((set, get) => ({
     } catch (error) {
       console.error('Get posts by date error:', error);
       return [];
+    }
+  },
+
+  fetchPopularTags: async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_popular_tags', { tag_limit: 30 });
+      if (error) throw error;
+      set({ popularTags: (data || []).map((row: any) => row.tag) });
+    } catch (error) {
+      console.error('Fetch popular tags error:', error);
     }
   },
 

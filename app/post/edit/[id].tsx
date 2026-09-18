@@ -163,7 +163,7 @@ export default function EditPostScreen() {
   const addKeyword = () => {
     if (newKeyword.trim() === '') return;
     if (keywords.length >= MAX_POST_KEYWORDS) {
-      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
+      Alert.alert('알림', `태그는 최대 ${MAX_POST_KEYWORDS}개까지 추가할 수 있습니다.`);
       return;
     }
 
@@ -189,7 +189,7 @@ export default function EditPostScreen() {
     }
 
     if (keywords.length > 0 && !validateKeywords(keywords)) {
-      Alert.alert('알림', `키워드는 최대 ${MAX_POST_KEYWORDS}개, 각 20자 이하로 입력해주세요.`);
+      Alert.alert('알림', `태그는 최대 ${MAX_POST_KEYWORDS}개, 각 20자 이하로 입력해주세요.`);
       return;
     }
 
@@ -357,9 +357,9 @@ export default function EditPostScreen() {
           />
         </View>
 
-        {/* 키워드 */}
+        {/* 태그 */}
         <View style={styles.section}>
-          <Text style={styles.label}>키워드 (최대 {MAX_POST_KEYWORDS}개)</Text>
+          <Text style={styles.label}>태그 (최대 {MAX_POST_KEYWORDS}개)</Text>
           <View style={styles.keywordsContainer}>
             {keywords.map((keyword, index) => (
               <TouchableOpacity
@@ -376,7 +376,7 @@ export default function EditPostScreen() {
             <View style={styles.keywordInputContainer}>
               <TextInput
                 style={styles.keywordInput}
-                placeholder="키워드 입력"
+                placeholder="태그 입력"
                 value={newKeyword}
                 onChangeText={setNewKeyword}
                 onSubmitEditing={addKeyword}
